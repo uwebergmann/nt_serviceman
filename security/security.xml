@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Beschreibung: Sicherheitseinstellungen für NT:ServiceMan
+    Letzte Änderung: $LastChanged$
+    Commit: $CommitId$
+    Autor: $Author$
+-->
+<odoo>
+    <record id="group_nt_serviceman_admin" model="res.groups">
+        <field name="name">NT:ServiceMan Admin</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+    </record>
+</odoo>

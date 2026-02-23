@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_nt_serviceman_config_admin,access_nt_serviceman_config_admin,model_nt_serviceman_config,nt_serviceman.group_nt_serviceman_admin,1,1,1,1
+access_nt_serviceman_configuration_item_user,access_nt_serviceman_configuration_item_user,model_nt_serviceman_configuration_item,base.group_user,1,1,1,1

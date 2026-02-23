@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Beschreibung: Menüstruktur für NT:ServiceMan
+    Letzte Änderung: $LastChanged$
+    Commit: $CommitId$
+    Autor: $Author$
+-->
+<odoo>
+    <!-- Hauptmenü / App-Kachel für NT:ServiceMan (für alle Benutzer sichtbar) -->
+    <menuitem id="menu_nt_serviceman_root"
+              name="NT:ServiceMan"
+              web_icon="nt_serviceman,static/description/icon.png"
+              sequence="15"
+              groups="base.group_user"/>
+
+    <!-- Untermenü (Platzhalter für künftige CI-Verwaltung) -->
+    <menuitem id="menu_nt_serviceman_data"
+              name="Daten"
+              parent="menu_nt_serviceman_root"
+              sequence="10"/>
+
+    <!-- Konfiguration (nur Admin) -->
+    <menuitem id="menu_nt_serviceman_config"
+              name="Konfiguration"
+              parent="menu_nt_serviceman_root"
+              sequence="20"
+              groups="nt_serviceman.group_nt_serviceman_admin"/>
+    <menuitem id="menu_nt_serviceman_config_settings"
+              name="Einstellungen"
+              parent="menu_nt_serviceman_config"
+              action="action_nt_serviceman_config_server"
+              sequence="10"
+              groups="nt_serviceman.group_nt_serviceman_admin"/>
+</odoo>

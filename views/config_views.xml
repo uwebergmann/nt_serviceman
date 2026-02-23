@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Beschreibung: Konfigurations-Views für NT:ServiceMan
+    Letzte Änderung: $LastChanged$
+    Commit: $CommitId$
+    Autor: $Author$
+-->
+<odoo>
+    <record id="view_nt_serviceman_config_form" model="ir.ui.view">
+        <field name="name">nt_serviceman.config.form</field>
+        <field name="model">nt_serviceman.config</field>
+        <field name="arch" type="xml">
+            <form string="NT:ServiceMan Einstellungen">
+                <sheet>
+                    <group>
+                        <field name="netbox_base_url" placeholder="https://netbox.example.com"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_nt_serviceman_config" model="ir.actions.act_window">
+        <field name="name">Einstellungen</field>
+        <field name="res_model">nt_serviceman.config</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+    </record>
+
+    <record id="action_nt_serviceman_config_server" model="ir.actions.server">
+        <field name="name">Einstellungen öffnen</field>
+        <field name="model_id" ref="model_nt_serviceman_config"/>
+        <field name="state">code</field>
+        <field name="code">
+config = model.search([], limit=1)
+if not config:
+    config = model.create({})
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Einstellungen',
+    'res_model': 'nt_serviceman.config',
+    'res_id': config.id,
+    'view_mode': 'form',
+    'target': 'inline',
+}
+        </field>
+    </record>
+</odoo>

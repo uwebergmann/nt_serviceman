@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Beschreibung: Views für Configuration Items (CI)
+    Letzte Änderung: $LastChanged$
+    Commit: $CommitId$
+    Autor: $Author$
+-->
+<odoo>
+    <record id="view_configuration_item_tree" model="ir.ui.view">
+        <field name="name">nt_serviceman.configuration_item.tree</field>
+        <field name="model">nt_serviceman.configuration_item</field>
+        <field name="arch" type="xml">
+            <tree string="Configuration Items">
+                <field name="name"/>
+                <field name="netbox_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_configuration_item_form" model="ir.ui.view">
+        <field name="name">nt_serviceman.configuration_item.form</field>
+        <field name="model">nt_serviceman.configuration_item</field>
+        <field name="arch" type="xml">
+            <form string="Configuration Item">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="netbox_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_configuration_item" model="ir.actions.act_window">
+        <field name="name">CI-Einträge</field>
+        <field name="res_model">nt_serviceman.configuration_item</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_configuration_item"
+              name="CI-Einträge"
+              parent="menu_nt_serviceman_root"
+              action="action_configuration_item"
+              sequence="12"/>
+</odoo>
