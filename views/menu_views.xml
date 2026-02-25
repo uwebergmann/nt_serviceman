@@ -14,11 +14,16 @@
               sequence="15"
               groups="base.group_user"/>
 
-    <!-- Untermenü (Platzhalter für künftige CI-Verwaltung) -->
+    <!-- Untermenü Daten -->
     <menuitem id="menu_nt_serviceman_data"
               name="Daten"
               parent="menu_nt_serviceman_root"
               sequence="10"/>
+    <menuitem id="menu_ci_class"
+              name="CI-Klassen"
+              parent="menu_nt_serviceman_data"
+              action="action_ci_class"
+              sequence="5"/>
 
     <!-- Konfiguration (nur Admin) -->
     <menuitem id="menu_nt_serviceman_config"

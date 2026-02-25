@@ -19,6 +19,9 @@ class NTServiceManConfig(models.Model):
     _name = "nt_serviceman.config"
     _description = "NT:ServiceMan Konfiguration"
 
+    def name_get(self):
+        return [(r.id, "Einstellungen NT:ServiceMan") for r in self]
+
     netbox_base_url = fields.Char(
         string="NetBox-URL",
         help="Basis-URL der NetBox-Instanz (z.B. https://netbox.example.com)",
@@ -144,3 +147,8 @@ class NTServiceManConfig(models.Model):
             lines.append(f"⚠️ 4. API-Token: unerwarteter Status {r_api.status_code}.")
 
         self.netbox_test_result = "\n".join(lines)
+
+    def action_fetch_device_roles_from_netbox(self):
+        """Ruft alle Device Roles von NetBox ab (Delegation an nt_serviceman.netbox_device_role)."""
+        self.ensure_one()
+        return self.env["nt_serviceman.netbox_device_role"].action_fetch_from_netbox()

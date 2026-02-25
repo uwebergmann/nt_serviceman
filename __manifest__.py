@@ -8,7 +8,7 @@
 
 {
     "name": "NT:ServiceMan",
-    "version": "0.9",
+    "version": "0.9.4",
     "author": "NETHINKS GmbH",
     "summary": "Abbildung von Configuration Items (CI) aus NetBox, Vertragszuordnung",
     "category": "Hidden",
@@ -18,7 +18,10 @@
     "data": [
         "security/security.xml",
         "security/ir.model.access.csv",
+        "data/ci_class_data.xml",
         "views/config_views.xml",
+        "views/ci_class_views.xml",
+        "views/netbox_device_role_views.xml",
         "views/configuration_item_views.xml",
         "views/menu_views.xml",
     ],

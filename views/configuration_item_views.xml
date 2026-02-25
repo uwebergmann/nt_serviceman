@@ -28,19 +28,31 @@
         <field name="arch" type="xml">
             <form string="Configuration Item">
                 <sheet>
-                    <div class="mb16">
-                        <button name="action_fetch_from_netbox" type="object"
-                                string="Hole NetBox-Item" class="btn-secondary"/>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Wird aus NetBox übernommen"/></h1>
                     </div>
-                    <group>
-                        <field name="name"/>
-                        <field name="netbox_id"/>
-                        <field name="netbox_display_link" nolabel="0" string="Anzeigename"/>
-                        <field name="netbox_serial"/>
-                        <field name="netbox_device_type"/>
-                        <field name="netbox_role"/>
+                    <group col="1" string="">
+                        <div class="my-3">
+                            <button name="action_fetch_from_netbox" type="object"
+                                    string="Hole NetBox-Item" class="btn btn-primary"/>
+                        </div>
                     </group>
-                    <group string="Debug (Roh-JSON)">
+                    <group col="2" class="mt16">
+                        <group string="">
+                            <field name="netbox_id"/>
+                        </group>
+                        <group string="NetBox-Daten">
+                            <field name="netbox_display_link" string="Anzeigename"/>
+                            <field name="netbox_serial"/>
+                            <field name="netbox_device_type"/>
+                            <field name="netbox_role"/>
+                            <field name="netbox_tenant_name"/>
+                            <field name="netbox_last_sync"/>
+                            <field name="netbox_sync_state"/>
+                            <field name="netbox_sync_error" attrs="{'invisible': [('netbox_sync_state', '!=', 'failed')]}"/>
+                        </group>
+                    </group>
+                    <group string="Debug (Roh-JSON)" class="mt16">
                         <field name="netbox_raw_response" nolabel="1"
                                placeholder="Rohes JSON-Ergebnis erscheint hier nach Klick auf 'Hole NetBox-Item'."/>
                     </group>

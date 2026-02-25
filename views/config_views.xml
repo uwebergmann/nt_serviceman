@@ -11,7 +11,7 @@
         <field name="name">nt_serviceman.config.form</field>
         <field name="model">nt_serviceman.config</field>
         <field name="arch" type="xml">
-            <form string="NT:ServiceMan Einstellungen">
+            <form string="Einstellungen NT:ServiceMan">
                 <sheet>
                     <group string="NetBox-Anbindung">
                         <field name="netbox_base_url" placeholder="https://netbox.example.com"/>
@@ -20,6 +20,10 @@
                             <button name="action_test_netbox_url" type="object" string="Test URL" class="btn-secondary"/>
                         </div>
                         <field name="netbox_test_result" nolabel="1" placeholder="Klicken Sie auf 'Test URL', um die Verbindung zu prüfen."/>
+                        <div class="mt16">
+                            <button name="action_fetch_device_roles_from_netbox" type="object"
+                                    string="Device Roles von NetBox abrufen" class="btn-primary"/>
+                        </div>
                     </group>
                 </sheet>
             </form>
@@ -27,7 +31,7 @@
     </record>
 
     <record id="action_nt_serviceman_config" model="ir.actions.act_window">
-        <field name="name">Einstellungen</field>
+        <field name="name">Einstellungen NT:ServiceMan</field>
         <field name="res_model">nt_serviceman.config</field>
         <field name="view_mode">form</field>
         <field name="target">inline</field>
@@ -43,7 +47,7 @@ if not config:
     config = model.create({})
 action = {
     'type': 'ir.actions.act_window',
-    'name': 'Einstellungen',
+    'name': 'Einstellungen NT:ServiceMan',
     'res_model': 'nt_serviceman.config',
     'res_id': config.id,
     'view_mode': 'form',

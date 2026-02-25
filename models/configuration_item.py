@@ -52,6 +52,24 @@ class ConfigurationItem(models.Model):
         string="Rolle im DCIM",
         readonly=True,
     )
+    netbox_tenant_name = fields.Char(
+        string="Tenant",
+        readonly=True,
+    )
+    netbox_last_sync = fields.Datetime(
+        string="Letzter Abruf",
+        readonly=True,
+    )
+    netbox_sync_state = fields.Selection(
+        [("ok", "OK"), ("failed", "Fehlgeschlagen")],
+        string="Sync-Status",
+        readonly=True,
+    )
+    netbox_sync_error = fields.Text(
+        string="Sync-Fehler",
+        readonly=True,
+        help="Wird nur bei Fehlern angezeigt.",
+    )
     netbox_raw_response = fields.Text(
         string="NetBox Rohdaten (JSON)",
         readonly=True,
@@ -73,7 +91,7 @@ class ConfigurationItem(models.Model):
                 )
 
     def _extract_netbox_fields(self, data):
-        """Extrahiert Anzeigename, Serial, Hardware-Typ und Rolle aus NetBox-JSON."""
+        """Extrahiert Anzeigename, Serial, Hardware-Typ, Rolle und Tenant aus NetBox-JSON."""
         display = (data or {}).get("display") or ""
         self.netbox_display = display
         if display:
@@ -84,6 +102,8 @@ class ConfigurationItem(models.Model):
         self.netbox_device_type = device_type.get("display") or device_type.get("model") or ""
         role = (data or {}).get("role") or {}
         self.netbox_role = role.get("display") or role.get("name") or ""
+        tenant = (data or {}).get("tenant") or {}
+        self.netbox_tenant_name = tenant.get("display") or tenant.get("name") or ""
 
     def action_fetch_from_netbox(self):
         """Ruft das Gerät per REST aus NetBox ab und speichert die Rohdaten."""
@@ -95,11 +115,15 @@ class ConfigurationItem(models.Model):
         if not base_url:
             self.netbox_raw_response = '{"error": "Keine NetBox-URL konfiguriert."}'
             self._extract_netbox_fields({})
+            self.netbox_sync_state = "failed"
+            self.netbox_sync_error = "Keine NetBox-URL konfiguriert."
             return
 
         if not nb_id:
             self.netbox_raw_response = '{"error": "Keine NetBox-ID eingetragen."}'
             self._extract_netbox_fields({})
+            self.netbox_sync_state = "failed"
+            self.netbox_sync_error = "Keine NetBox-ID eingetragen."
             return
 
         url = f"{base_url}/api/dcim/devices/{nb_id}/"
@@ -114,8 +138,12 @@ class ConfigurationItem(models.Model):
             data = r.json()
             self.netbox_raw_response = json.dumps(data, indent=2, ensure_ascii=False)
             self._extract_netbox_fields(data)
+            self.netbox_last_sync = fields.Datetime.now()
+            self.netbox_sync_state = "ok"
+            self.netbox_sync_error = False
         except requests.RequestException as e:
             self._extract_netbox_fields({})
+            self.netbox_sync_state = "failed"
             err_response = getattr(e, "response", None)
             if err_response is not None and err_response.text:
                 try:
@@ -126,13 +154,17 @@ class ConfigurationItem(models.Model):
                     )
                 except Exception:
                     self.netbox_raw_response = err_response.text
+                self.netbox_sync_error = err_response.text[:500]
             else:
                 self.netbox_raw_response = json.dumps(
                     {"error": str(e)},
                     indent=2,
                 )
+                self.netbox_sync_error = str(e)
         except (json.JSONDecodeError, ValueError) as e:
             self._extract_netbox_fields({})
+            self.netbox_sync_state = "failed"
+            self.netbox_sync_error = str(e)
             self.netbox_raw_response = json.dumps(
                 {"error": f"Kein gültiges JSON: {e}"},
                 indent=2,

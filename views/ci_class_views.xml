@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Beschreibung: Views für CI-Klassen
+-->
+<odoo>
+    <record id="view_ci_class_tree" model="ir.ui.view">
+        <field name="name">nt_serviceman.ci_class.tree</field>
+        <field name="model">nt_serviceman.ci_class</field>
+        <field name="arch" type="xml">
+            <tree string="CI-Klassen" editable="bottom">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="description"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_ci_class_form" model="ir.ui.view">
+        <field name="name">nt_serviceman.ci_class.form</field>
+        <field name="model">nt_serviceman.ci_class</field>
+        <field name="arch" type="xml">
+            <form string="CI-Klasse">
+                <sheet>
+                    <group>
+                        <group string="Grunddaten">
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Beschreibung">
+                            <field name="description" placeholder="Optionale Beschreibung"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ci_class" model="ir.actions.act_window">
+        <field name="name">CI-Klassen</field>
+        <field name="res_model">nt_serviceman.ci_class</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Erstellen Sie die erste CI-Klasse
+            </p>
+            <p>
+                CI-Klassen (z.B. FW, SW, RTR, AP) sind die fachliche Steuergröße für
+                Abrechnung, SLA-Logik und Plan/Ist-Vergleich.
+            </p>
+        </field>
+    </record>
+</odoo>

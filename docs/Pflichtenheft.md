@@ -2,9 +2,9 @@
 ## NT:ServiceMan v0.9 – CI-Abbildung in Odoo mit NetBox-REST-Anbindung
 
 **Projekt:** NT:ServiceMan  
-**Version:** 0.9 (Startversion)  
+**Version:** 0.9 / 0.9.1 (Architekturerweiterung)  
 **Status:** Pflichtenheft  
-**Ziel:** Startfähigkeit herstellen  
+**Ziel:** Startfähigkeit herstellen, fachliche/technische Ebenen trennen  
 **Nicht-Ziel:** Vollständige Automatisierung
 
 ---
@@ -91,7 +91,7 @@ Diese Planpositionen:
 Geräteklassen werden **nicht hart im Code** definiert.
 
 Stattdessen:
-- eigenes konfigurierbares Modell **„CI-Klasse“**
+- eigenes konfigurierbares Modell **„CI-Klasse“** (vgl. Kap. 8.4)
 - frei anlegbar
 - aktiv/inaktiv schaltbar
 
@@ -102,6 +102,8 @@ Für den Start werden vordefiniert:
 - AP (Access Point)
 
 Keine Server-, Storage- oder generischen IT-Klassen.
+
+**Architekturentscheidung (v0.9.1):** CI-Klassen sind vollständig unabhängig von NetBox. Sie bilden die fachliche Steuergröße für Abrechnung, SLA-Logik, Plan/Ist-Vergleich und Portal-Darstellung.
 
 ### 2.4 Plan/Ist-Logik
 
@@ -279,27 +281,111 @@ Die Änderung der Konfiguration darf keinen automatischen Re-Sync aller CI ausl�
 
 ### 8.1 Pflichtfelder
 
-| Feld | Typ | Herkunft | Beschreibung |
-|----|----|--------|-------------|
-| netbox_id | Integer / Char | manuell | ID des Devices in NetBox |
-| netbox_name | Char | NetBox | Name des Geräts |
-| netbox_role_name | Char | NetBox | Rolle des Geräts |
-| netbox_tenant_name | Char | NetBox | Tenant / Kunde |
-| netbox_url | Char | NetBox | Link zum Objekt |
-| netbox_last_sync | Datetime | System | Zeitpunkt letzter Abruf |
-| netbox_sync_state | Selection | System | ok / failed |
-| netbox_sync_error | Text | System | Fehlermeldung |
+| Feld | Typ | Herkunft | Beschreibung | Status |
+|----|----|--------|-------------|--------|
+| netbox_id | Integer / Char | manuell | ID des Devices in NetBox | ✓ |
+| netbox_name | Char | NetBox | Name des Geräts (über name/netbox_display) | ✓ |
+| netbox_role_id | Many2one | NetBox | Relation auf netbox.device_role; ersetzt netbox_role_name (v0.9.1) | v0.9.1 |
+| netbox_tenant_name | Char | NetBox | Tenant / Kunde | ✓ |
+| netbox_url | Char | NetBox | Link (Anzeigename klickbar → display_url) | ✓ |
+| netbox_last_sync | Datetime | System | Zeitpunkt letzter Abruf | ✓ |
+| netbox_sync_state | Selection | System | ok / failed | ✓ |
+| netbox_sync_error | Text | System | Fehlermeldung (nur bei Fehler sichtbar) | ✓ |
+| ci_class_id | Many2one | Mapping | CI-Klasse (via Role-Mapping, v0.9.1) | v0.9.1 |
 
 ### 8.2 Feldregeln
 
 - `netbox_id` ist editierbar
 - alle anderen `netbox_*` Felder sind readonly
 - Service-Felder sind in v0.9 nicht Bestandteil
+- **v0.9.1:** Anzeige der Rolle ausschließlich über Relation `netbox_role_id`; das bisherige Textfeld `netbox_role_name` entfällt
 
 ### 8.3 CI-Klassen (Geräteklassen)
 
-Vgl. Abschnitt 2.3. Konfigurierbares Modell „CI-Klasse“ mit vordefinierten Werten 
+Vgl. Abschnitt 8.4. Konfigurierbares Modell „CI-Klasse“ mit vordefinierten Werten 
 FW, SW, RTR, AP für den Start. Frei anlegbar, aktiv/inaktiv schaltbar.
+
+---
+
+## 8.4 CI-Klassen (v0.9.1 – verbindliche Architektur)
+
+Einführung eines konfigurierbaren Modells **„CI-Klasse“** als fachliche Ebene in Odoo.
+
+**Modell:** `ci_class` (technischer Name in Implementierung festzulegen)
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| code | Char | Kurzcode (z.B. FW, SW, RTR, AP) |
+| name | Char | Bezeichnung |
+| description | Text | Optionale Beschreibung |
+| active | Boolean | Aktiv/Inaktiv schaltbar |
+
+**Stellung der CI-Klassen:**
+
+CI-Klassen sind die **fachliche Steuergröße** für:
+- Abrechnung
+- SLA-Logik
+- Plan/Ist-Vergleich
+- zukünftige Automatisierung
+- Portal-Darstellung
+
+**Wichtig:** CI-Klassen sind vollständig unabhängig von NetBox. Sie werden ausschließlich in Odoo gepflegt und haben keinen Bezug zu NetBox-Device-Rollen, es sei denn, eine explizite Zuordnung wird über das Mapping-Modell (Kap. 8.6) hergestellt.
+
+---
+
+## 8.5 NetBox Device Roles (v0.9.1 – technische Ebene)
+
+Ein neues Modell wird eingeführt:
+
+**Modell:** `netbox.device_role`
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| netbox_id | Integer | Eindeutige ID in NetBox |
+| name | Char | Bezeichnung |
+| active | Boolean | Aktiv/Archiviert |
+
+**Eigenschaften:**
+
+- Diese Tabelle ist ein lokaler Spiegel der NetBox Device Roles.
+- Sie wird ausschließlich aus NetBox befüllt oder aktualisiert.
+- Manuelle Änderungen sind nicht vorgesehen (außer durch Admin im Ausnahmefall).
+
+**Regeln:**
+
+- Rollen dürfen nicht gelöscht werden (nur archiviert über `active=False`).
+- Beim CI-Sync muss die Device Role automatisch angelegt oder aktualisiert werden (Upsert-Logik über `netbox_id`).
+
+---
+
+## 8.6 Mapping Device Role → CI-Klasse (v0.9.1)
+
+**Modell:** `netbox.role_ci_class_map`
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| device_role_id | Many2one | Referenz auf netbox.device_role |
+| ci_class_id | Many2one | Referenz auf ci_class |
+| active | Boolean | Aktiv/Inaktiv |
+
+**Regeln:**
+
+- Eine Device Role kann **genau einer** CI-Klasse zugeordnet werden.
+- Eine CI-Klasse kann **mehrere** Device Roles enthalten (1:n).
+- Mapping ist konfigurierbar.
+
+**Beim CI-Sync:**
+
+- Wenn eindeutiges Mapping existiert → `ci_class_id` am CI automatisch setzen
+- Wenn kein Mapping existiert → CI bleibt „unklassifiziert“
+- Kein automatischer Sync-Fehler bei fehlender Klassifizierung
+
+---
+
+## 8.7 Anzeige im Portal (v0.9.1)
+
+- **Primär sichtbar:** CI-Klasse
+- **Device Role** nur als Detailinformation
 
 ---
 
@@ -318,13 +404,15 @@ FW, SW, RTR, AP für den Start. Frei anlegbar, aktiv/inaktiv schaltbar.
 
 ### 9.3 Übernommene Felder
 
-| NetBox-Feld | Odoo-Feld |
-|-----------|----------|
-| id | netbox_id |
-| name | netbox_name |
-| role.name | netbox_role_name |
-| tenant.name | netbox_tenant_name |
-| display_url / url | netbox_url |
+| NetBox-Feld | Odoo-Feld (v0.9) | Odoo-Feld (v0.9.1) |
+|-------------|------------------|---------------------|
+| id | netbox_id | netbox_id |
+| name | netbox_name | netbox_name |
+| role | netbox_role_name | netbox_role_id (Upsert in netbox.device_role) |
+| tenant.name | netbox_tenant_name | netbox_tenant_name |
+| display_url / url | netbox_url | netbox_url |
+
+**v0.9.1:** Die Device Role (`role`) wird in die Tabelle `netbox.device_role` gespiegelt (Upsert über `netbox_id`). Das CI erhält eine Many2one-Referenz `netbox_role_id`. Über das Mapping (Kap. 8.6) wird gegebenenfalls `ci_class_id` am CI gesetzt.
 
 ---
 
@@ -354,7 +442,7 @@ Ein Vertrag enthält zwei Ebenen (vgl. Abschnitt 2.2):
 - Ein CI gehört **genau zu einem** wiederkehrenden Vertrag.
 - Ein Vertrag kann **mehrere CI** enthalten.
 - CI stammen aus NetBox, sind portal-sichtbar, abrechnungsrelevant.
-- CI werden im Vertrag tabellarisch angezeigt (Name, Rolle, Tenant).
+- CI werden im Vertrag tabellarisch angezeigt (Name, CI-Klasse, Rolle/Tenant). **v0.9.1:** Primär CI-Klasse, Device Role als Detail.
 
 ---
 
@@ -381,3 +469,41 @@ Dieses Pflichtenheft definiert bewusst eine kleine, klare Startversion, die:
 - und zukünftige Automatisierung vorbereitet.
 
 Version 0.9 ist ein Startpunkt – kein Endzustand.
+
+**Architekturerweiterung v0.9.1:** Trennung von fachlicher Ebene (CI-Klassen) und technischer Ebene (NetBox Device Roles). Das konfigurierbare Mapping ermöglicht eine flexible Zuordnung, ohne dass CI-Klassen an NetBox-Strukturen gebunden sind.
+
+---
+
+# Erledigte und offene Punkte: NT:ServiceMan
+
+Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
+
+## ✅ Erledigt
+
+| # | Thema | Anmerkung |
+|---|-------|-----------|
+| 1 | **Config**: NetBox-URL, API-Token, Test-URL | Prüft Server, REST-API, NetBox-Struktur, Token-Gültigkeit |
+| 2 | **CI anlegbar** | Modell `nt_serviceman.configuration_item` |
+| 3 | **NetBox-ID** editierbar | Pflicht für Abruf |
+| 4 | **Button „Hole von NetBox“** | Manueller REST-Abruf |
+| 5 | **NetBox-Felder übernommen** | Anzeigename, Serial, Hardware-Typ, Rolle, Tenant (readonly) |
+| 6 | **Name** wird aus NetBox übernommen | Name optional, automatisch beim Abruf |
+| 7 | **NetBox-Link** | Anzeigename klickbar → öffnet Gerät in NetBox (neuer Tab) |
+| 8 | **Roh-JSON** für Debug | Vollständige API-Antwort sichtbar |
+| 9 | **Einstellungen-Überschrift** | „Einstellungen NT:ServiceMan“ statt technischem Namen |
+| 10 | **Rechte** | Config nur für NT:ServiceMan Admin |
+| 11 | **Kap. 8.1 Felder** | netbox_tenant_name, netbox_last_sync, netbox_sync_state, netbox_sync_error |
+| 12 | **CI-Klasse** (Kap. 8.4) | Modell nt_serviceman.ci_class, FW/SW/RTR/AP vordefiniert |
+
+## ⏳ Offen (v0.9 / v0.9.1)
+
+| # | Thema | Quelle |
+|---|-------|--------|
+| 1 | **NetBox Device Roles** – Modell netbox.device_role, Upsert beim Sync | Kap. 8.5 |
+| 2 | **Mapping** – netbox.role_ci_class_map, Zuordnung Role → CI-Klasse | Kap. 8.6 |
+| 3 | **CI-Feldanpassung** – netbox_role_id (Many2one), netbox_role_name entfällt | Kap. 8.1 |
+| 4 | **Planpositionen** am Vertrag | Kap. 2.2, 4.2, 11 |
+| 5 | **Vertragskopplung** | Ein Vertrag enthält mehrere CI, CI-Liste im Vertrag (Kap. 4.7 f., 11) |
+| 6 | **Plan/Ist-Vergleich** mit Hinweis bei Abweichung (Aktivität/Chatter) | Kap. 4.9 |
+| 7 | **Portal** – CI-Klasse primär, Device Role als Detail | Kap. 8.7 |
+| 8 | **Config in ir.config_parameter / res.company** (aktuell: eigenes Config-Modell) | Kap. 7.2 |

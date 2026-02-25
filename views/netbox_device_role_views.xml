@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Beschreibung: Views für NetBox Device Roles
+-->
+<odoo>
+    <record id="view_netbox_device_role_tree" model="ir.ui.view">
+        <field name="name">nt_serviceman.netbox_device_role.tree</field>
+        <field name="model">nt_serviceman.netbox_device_role</field>
+        <field name="arch" type="xml">
+            <tree string="Device Roles" decoration-muted="not active" create="false" delete="false" edit="false">
+                <header>
+                    <button name="action_fetch_from_netbox" type="object"
+                            string="Von NetBox abrufen" class="btn-primary"/>
+                </header>
+                <field name="netbox_id"/>
+                <field name="name"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_netbox_device_role" model="ir.actions.act_window">
+        <field name="name">NetBox Device Roles</field>
+        <field name="res_model">nt_serviceman.netbox_device_role</field>
+        <field name="view_mode">tree</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Device Roles abrufen: Einstellungen NT:ServiceMan → „Device Roles von NetBox abrufen“
+            </p>
+            <p>
+                Die Device Roles werden ausschließlich aus NetBox übernommen.
+                Manuelle Änderungen sind nicht vorgesehen.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_netbox_device_role"
+              name="Device Roles"
+              parent="menu_nt_serviceman_data"
+              action="action_netbox_device_role"
+              sequence="15"/>
+</odoo>
