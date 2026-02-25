@@ -13,8 +13,13 @@
         <field name="arch" type="xml">
             <form string="NT:ServiceMan Einstellungen">
                 <sheet>
-                    <group>
+                    <group string="NetBox-Anbindung">
                         <field name="netbox_base_url" placeholder="https://netbox.example.com"/>
+                        <field name="netbox_api_token" password="True" placeholder="API-Token aus NetBox: My Account → API Tokens"/>
+                        <div class="mt16">
+                            <button name="action_test_netbox_url" type="object" string="Test URL" class="btn-secondary"/>
+                        </div>
+                        <field name="netbox_test_result" nolabel="1" placeholder="Klicken Sie auf 'Test URL', um die Verbindung zu prüfen."/>
                     </group>
                 </sheet>
             </form>

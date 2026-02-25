@@ -203,9 +203,11 @@ Diese Konfiguration ist **nicht CI-spezifisch**, sondern gilt systemweit.
 
 Unter **NT:ServiceMan > Konfiguration > Einstellungen** wird ein Formular bereitgestellt mit:
 
-| Feld           | Typ    | Beschreibung                                      |
-|----------------|--------|---------------------------------------------------|
-| **NetBox-URL** | Text   | Basis-URL der NetBox-Instanz (z.B. https://netbox.example.com) |
+| Feld             | Typ    | Beschreibung                                      |
+|------------------|--------|---------------------------------------------------|
+| **NetBox-URL**   | Text   | Basis-URL der NetBox-Instanz (z.B. https://netbox.example.com) |
+| **Test URL**     | Button | Prüft die Verbindung: (1) Server erreichbar, (2) REST-API antwortet, (3) NetBox-API-Struktur erkannt |
+| **Test-Ergebnis**| Text   | Ausgabe des URL-Tests (readonly)                  |
 
 Zugriff nur für Benutzer mit der Gruppe **NT:ServiceMan Admin**.
 

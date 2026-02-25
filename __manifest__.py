@@ -14,6 +14,7 @@
     "category": "Hidden",
     "license": "Other proprietary",
     "depends": ["base"],
+    "external_dependencies": {"python": ["requests"]},
     "data": [
         "security/security.xml",
         "security/ir.model.access.csv",

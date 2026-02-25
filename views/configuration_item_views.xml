@@ -14,6 +14,10 @@
             <tree string="Configuration Items">
                 <field name="name"/>
                 <field name="netbox_id"/>
+                <field name="netbox_display"/>
+                <field name="netbox_serial"/>
+                <field name="netbox_device_type"/>
+                <field name="netbox_role"/>
             </tree>
         </field>
     </record>
@@ -24,9 +28,21 @@
         <field name="arch" type="xml">
             <form string="Configuration Item">
                 <sheet>
+                    <div class="mb16">
+                        <button name="action_fetch_from_netbox" type="object"
+                                string="Hole NetBox-Item" class="btn-secondary"/>
+                    </div>
                     <group>
                         <field name="name"/>
                         <field name="netbox_id"/>
+                        <field name="netbox_display_link" nolabel="0" string="Anzeigename"/>
+                        <field name="netbox_serial"/>
+                        <field name="netbox_device_type"/>
+                        <field name="netbox_role"/>
+                    </group>
+                    <group string="Debug (Roh-JSON)">
+                        <field name="netbox_raw_response" nolabel="1"
+                               placeholder="Rohes JSON-Ergebnis erscheint hier nach Klick auf 'Hole NetBox-Item'."/>
                     </group>
                 </sheet>
             </form>
