@@ -7,6 +7,7 @@
 # -----------------------------------------------------------------------------
 
 import json
+from datetime import datetime
 
 import markupsafe
 import requests
@@ -48,13 +49,37 @@ class ConfigurationItem(models.Model):
         string="Hardware-Typ",
         readonly=True,
     )
-    netbox_role = fields.Char(
-        string="Rolle im DCIM",
+    netbox_role_id = fields.Many2one(
+        "nt_serviceman.netbox_device_role",
+        string="NetBox Device Role",
         readonly=True,
+        help="Device Role aus NetBox; über Mapping zur CI-Klasse.",
+    )
+    netbox_role_netbox_id = fields.Integer(
+        string="Device Role NetBox-ID",
+        related="netbox_role_id.netbox_id",
+        readonly=True,
+    )
+    ci_class_id = fields.Many2one(
+        "nt_serviceman.ci_class",
+        string="CI-Klasse",
+        related="netbox_role_id.ci_class_id",
+        readonly=True,
+        help="Leitet sich aus dem Mapping Device Role → CI-Klasse ab.",
     )
     netbox_tenant_name = fields.Char(
         string="Tenant",
         readonly=True,
+    )
+    netbox_created = fields.Datetime(
+        string="NetBox erstellt",
+        readonly=True,
+        help="Erstellungszeitpunkt aus NetBox",
+    )
+    netbox_last_updated = fields.Datetime(
+        string="NetBox zuletzt geändert",
+        readonly=True,
+        help="Letzte Änderung in NetBox; steuert die Sync-Logik",
     )
     netbox_last_sync = fields.Datetime(
         string="Letzter Abruf",
@@ -76,6 +101,20 @@ class ConfigurationItem(models.Model):
         help="Rohe API-Antwort von NetBox (Debugging).",
     )
 
+    def _parse_netbox_datetime(self, val):
+        """NetBox created/last_updated → Odoo Datetime-String (UTC)."""
+        if not val:
+            return False
+        s = str(val).strip().replace("Z", "+00:00")
+        try:
+            if "T" in s:
+                dt = datetime.fromisoformat(s)
+            else:
+                dt = datetime.fromisoformat(s[:10] + "T00:00:00+00:00")
+        except (ValueError, TypeError):
+            return False
+        return fields.Datetime.to_string(dt) if dt else False
+
     def _compute_netbox_display_link(self):
         """Klickbarer Anzeigename als Link zu NetBox."""
         for rec in self:
@@ -91,19 +130,38 @@ class ConfigurationItem(models.Model):
                 )
 
     def _extract_netbox_fields(self, data):
-        """Extrahiert Anzeigename, Serial, Hardware-Typ, Rolle und Tenant aus NetBox-JSON."""
-        display = (data or {}).get("display") or ""
+        """Extrahiert Anzeigename, Serial, Hardware-Typ, Rolle, Tenant und Timestamps aus NetBox-JSON."""
+        data = data or {}
+        display = data.get("display") or ""
         self.netbox_display = display
         if display:
             self.name = display
-        self.netbox_display_url = (data or {}).get("display_url") or ""
-        self.netbox_serial = (data or {}).get("serial") or ""
-        device_type = (data or {}).get("device_type") or {}
+        self.netbox_display_url = data.get("display_url") or ""
+        self.netbox_serial = data.get("serial") or ""
+        device_type = data.get("device_type") or {}
         self.netbox_device_type = device_type.get("display") or device_type.get("model") or ""
-        role = (data or {}).get("role") or {}
-        self.netbox_role = role.get("display") or role.get("name") or ""
-        tenant = (data or {}).get("tenant") or {}
+        role = data.get("role") or data.get("device_role")
+        role_nb_id = None
+        if isinstance(role, dict):
+            role_nb_id = role.get("id")
+        elif isinstance(role, (int, float)):
+            role_nb_id = int(role)
+        if role_nb_id is not None:
+            try:
+                role_nb_id = int(role_nb_id)
+            except (TypeError, ValueError):
+                role_nb_id = None
+        if role_nb_id:
+            device_role = self.env["nt_serviceman.netbox_device_role"].search(
+                [("netbox_id", "=", role_nb_id)], limit=1
+            )
+            self.netbox_role_id = device_role if device_role else False
+        else:
+            self.netbox_role_id = False
+        tenant = data.get("tenant") or {}
         self.netbox_tenant_name = tenant.get("display") or tenant.get("name") or ""
+        self.netbox_created = self._parse_netbox_datetime(data.get("created"))
+        self.netbox_last_updated = self._parse_netbox_datetime(data.get("last_updated"))
 
     def action_fetch_from_netbox(self):
         """Ruft das Gerät per REST aus NetBox ab und speichert die Rohdaten."""
@@ -136,11 +194,24 @@ class ConfigurationItem(models.Model):
             r = requests.get(url, headers=headers, timeout=15, verify=False)
             r.raise_for_status()
             data = r.json()
-            self.netbox_raw_response = json.dumps(data, indent=2, ensure_ascii=False)
-            self._extract_netbox_fields(data)
-            self.netbox_last_sync = fields.Datetime.now()
-            self.netbox_sync_state = "ok"
-            self.netbox_sync_error = False
+            nb_last_updated = self._parse_netbox_datetime(data.get("last_updated"))
+
+            # Sync-Logik: nur aktualisieren wenn Feld leer oder NetBox jünger
+            do_update = False
+            if not self.netbox_last_updated:
+                do_update = True
+            elif nb_last_updated:
+                nb_dt = fields.Datetime.from_string(nb_last_updated)
+                local_dt = fields.Datetime.from_string(self.netbox_last_updated)
+                if nb_dt > local_dt:
+                    do_update = True
+
+            if do_update:
+                self.netbox_raw_response = json.dumps(data, indent=2, ensure_ascii=False)
+                self._extract_netbox_fields(data)
+                self.netbox_last_sync = fields.Datetime.now()
+                self.netbox_sync_state = "ok"
+                self.netbox_sync_error = False
         except requests.RequestException as e:
             self._extract_netbox_fields({})
             self.netbox_sync_state = "failed"

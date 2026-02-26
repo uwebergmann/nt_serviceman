@@ -8,13 +8,16 @@
         <field name="name">nt_serviceman.netbox_device_role.tree</field>
         <field name="model">nt_serviceman.netbox_device_role</field>
         <field name="arch" type="xml">
-            <tree string="Device Roles" decoration-muted="not active" create="false" delete="false" edit="false">
+            <tree string="Device Roles" decoration-muted="not active" create="false" delete="false" editable="bottom">
                 <header>
                     <button name="action_fetch_from_netbox" type="object"
                             string="Von NetBox abrufen" class="btn-primary"/>
                 </header>
                 <field name="netbox_id"/>
                 <field name="name"/>
+                <field name="ci_class_id"/>
+                <field name="netbox_created"/>
+                <field name="netbox_last_updated"/>
                 <field name="active"/>
             </tree>
         </field>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Beschreibung: Views für Wizard "Device Roles zu CI-Klasse zuordnen"
+-->
+<odoo>
+    <record id="view_ci_class_device_role_assign_form" model="ir.ui.view">
+        <field name="name">nt_serviceman.ci_class_device_role_assign.form</field>
+        <field name="model">nt_serviceman.ci_class_device_role_assign</field>
+        <field name="arch" type="xml">
+            <form string="Device Roles zuordnen">
+                <group>
+                    <field name="ci_class_id"/>
+                </group>
+                <group string="Verfügbare Device Roles (noch ohne Zuordnung)">
+                    <field name="device_role_ids" nolabel="1"
+                           options="{'no_create': True}"/>
+                </group>
+                <footer>
+                    <button name="action_assign" string="Zuordnen" type="object" class="btn-primary"/>
+                    <button string="Abbrechen" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

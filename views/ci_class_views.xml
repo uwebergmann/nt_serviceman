@@ -13,6 +13,8 @@
                 <field name="name"/>
                 <field name="description"/>
                 <field name="active"/>
+                <button name="action_open_form" type="object" icon="fa-arrow-right"
+                        title="Formular öffnen" string="→ Formular" class="btn btn-link"/>
             </tree>
         </field>
     </record>
@@ -32,6 +34,19 @@
                         <group string="Beschreibung">
                             <field name="description" placeholder="Optionale Beschreibung"/>
                         </group>
+                    </group>
+                    <group string="Device Roles">
+                        <div class="mt8">
+                            <button name="action_assign_device_roles" type="object"
+                                    string="Device Roles zuordnen" class="btn-secondary"/>
+                        </div>
+                        <field name="device_role_ids" nolabel="1" readonly="1">
+                            <tree create="false" delete="true" editable="bottom">
+                                <field name="netbox_id"/>
+                                <field name="name"/>
+                                <field name="ci_class_id" column_invisible="1"/>
+                            </tree>
+                        </field>
                     </group>
                 </sheet>
             </form>

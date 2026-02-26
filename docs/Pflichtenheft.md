@@ -288,6 +288,8 @@ Die Änderung der Konfiguration darf keinen automatischen Re-Sync aller CI ausl�
 | netbox_role_id | Many2one | NetBox | Relation auf netbox.device_role; ersetzt netbox_role_name (v0.9.1) | v0.9.1 |
 | netbox_tenant_name | Char | NetBox | Tenant / Kunde | ✓ |
 | netbox_url | Char | NetBox | Link (Anzeigename klickbar → display_url) | ✓ |
+| netbox_created | Datetime | NetBox | Erstellungszeitpunkt aus NetBox (readonly) | ✓ |
+| netbox_last_updated | Datetime | NetBox | Letzte Änderung aus NetBox (readonly); steuert Sync-Logik | ✓ |
 | netbox_last_sync | Datetime | System | Zeitpunkt letzter Abruf | ✓ |
 | netbox_sync_state | Selection | System | ok / failed | ✓ |
 | netbox_sync_error | Text | System | Fehlermeldung (nur bei Fehler sichtbar) | ✓ |
@@ -297,8 +299,19 @@ Die Änderung der Konfiguration darf keinen automatischen Re-Sync aller CI ausl�
 
 - `netbox_id` ist editierbar
 - alle anderen `netbox_*` Felder sind readonly
+- **netbox_created / netbox_last_updated:** Gleiche Sync-Logik wie bei NetBox Device Roles (Kap. 8.5): Feld leer oder NetBox jünger → Aktualisierung; sonst keine Änderung.
+- **ci_class_id:** Wird aus dem Mapping Device Role → CI-Klasse abgeleitet (readonly). Existiert ein Mapping für die NetBox-Device-Role des Geräts, wird die CI-Klasse angezeigt; sonst bleibt das Feld leer.
 - Service-Felder sind in v0.9 nicht Bestandteil
-- **v0.9.1:** Anzeige der Rolle ausschließlich über Relation `netbox_role_id`; das bisherige Textfeld `netbox_role_name` entfällt
+- **v0.9.1:** Anzeige der Rolle ausschließlich über Relation `netbox_role_id`; der Rollenname kommt aus `netbox_device_role.name` (Mapping Role-ID → Role-Name). Das bisherige Textfeld `netbox_role_name` entfällt.
+
+**Anzeige der CI-Klasse im CI-Formular:**
+
+- Die **CI-Klasse** wird im Formular eines Configuration Items angezeigt.
+- **Position:** direkt unterhalb der NetBox-ID (linke Spalte).
+- **Herkunft:** Die CI-Klasse leitet sich aus dem Mapping NetBox-Device-Role → CI-Klasse ab: Die Device Role des Geräts kommt aus dem NetBox-Abruf; über das Mapping (Kap. 8.6) wird die zugeordnete CI-Klasse ermittelt. Das Feld ist readonly.
+- Ohne Mapping oder ohne zugeordnete Device Role bleibt die CI-Klasse leer.
+
+---
 
 ### 8.3 CI-Klassen (Geräteklassen)
 
@@ -331,6 +344,12 @@ CI-Klassen sind die **fachliche Steuergröße** für:
 
 **Wichtig:** CI-Klassen sind vollständig unabhängig von NetBox. Sie werden ausschließlich in Odoo gepflegt und haben keinen Bezug zu NetBox-Device-Rollen, es sei denn, eine explizite Zuordnung wird über das Mapping-Modell (Kap. 8.6) hergestellt.
 
+**Benutzerschnittstelle CI-Klassen-Liste:**
+
+- Die Liste ist **inline bearbeitbar** (Bearbeitung direkt in der Zeile möglich).
+- Jede Zeile endet mit einem Button **„→ Formular“**, der die CI-Klasse im Formular öffnet (inkl. zugeordneter Device Roles, Zuordnungsbutton usw.).
+- Beide Möglichkeiten (Inline-Bearbeitung und Formularöffnung) stehen parallel zur Verfügung.
+
 ---
 
 ## 8.5 NetBox Device Roles (v0.9.1 – technische Ebene)
@@ -344,6 +363,9 @@ Ein neues Modell wird eingeführt:
 | netbox_id | Integer | Eindeutige ID in NetBox |
 | name | Char | Bezeichnung |
 | active | Boolean | Aktiv/Archiviert |
+| netbox_created | Datetime | Erstellungszeitpunkt aus NetBox (readonly) |
+| netbox_last_updated | Datetime | Letzte Änderung aus NetBox (readonly) |
+| ci_class_id | Many2one | Zuordnung zur CI-Klasse (editierbar) |
 
 **Eigenschaften:**
 
@@ -356,29 +378,48 @@ Ein neues Modell wird eingeführt:
 - Rollen dürfen nicht gelöscht werden (nur archiviert über `active=False`).
 - Beim CI-Sync muss die Device Role automatisch angelegt oder aktualisiert werden (Upsert-Logik über `netbox_id`).
 
+**NetBox-Timestamps und Sync-Logik (created / last_updated):**
+
+NetBox liefert pro Objekt die Felder `created` und `last_updated`. Diese werden in Odoo gespiegelt:
+
+- **netbox_created:** Wird stets mit dem Wert aus NetBox befüllt (bei Anlage und bei jeder Aktualisierung).
+
+- **netbox_last_updated:** Steuert die Aktualisierungslogik:
+  1. **Objekt neu oder Feld leer:** Der Wert wird aus NetBox übernommen; alle anderen Felder werden entsprechend aktualisiert.
+  2. **Feld enthält bereits einen Wert:** Es wird mit dem Wert aus NetBox verglichen:
+     - **NetBox jünger:** Alle Felder in Odoo werden auf den neuesten Stand gebracht (inkl. `netbox_last_updated`).
+     - **NetBox gleich oder älter:** Es erfolgt keine Änderung; lokale Daten bleiben unverändert.
+
 ---
 
-## 8.6 Mapping Device Role → CI-Klasse (v0.9.1)
+## 8.6 Mapping Device Role ↔ CI-Klasse (v0.9.1)
 
-**Modell:** `netbox.role_ci_class_map`
+**Kardinalität:**
 
-| Feld | Typ | Beschreibung |
-|------|-----|--------------|
-| device_role_id | Many2one | Referenz auf netbox.device_role |
-| ci_class_id | Many2one | Referenz auf ci_class |
-| active | Boolean | Aktiv/Inaktiv |
+- Eine **Device Role** kann **genau einer** CI-Klasse angehören (Many2one).
+- Eine **CI-Klasse** kann **viele** Device Roles enthalten (One2many).
 
-**Regeln:**
+**Technische Abbildung:**
 
-- Eine Device Role kann **genau einer** CI-Klasse zugeordnet werden.
-- Eine CI-Klasse kann **mehrere** Device Roles enthalten (1:n).
-- Mapping ist konfigurierbar.
+- Modell `nt_serviceman.netbox_device_role`: Feld `ci_class_id` (Many2one → `nt_serviceman.ci_class`).
+- Modell `nt_serviceman.ci_class`: Feld `device_role_ids` (One2many → `nt_serviceman.netbox_device_role`, inverse von `ci_class_id`).
+
+**Benutzerschnittstellen:**
+
+| Ort | Darstellung |
+|-----|-------------|
+| **Device-Roles-Liste** | Auswahlfeld „CI-Klasse“; Zuordnung direkt in der Liste möglich |
+| **CI-Klasse-Formular** | Liste der zugeordneten Device Roles; Button „Device Roles zuordnen“ zum Hinzufügen weiterer Rollen |
+
+**Zuordnungslogik beim Hinzufügen (CI-Klasse-Formular):**
+
+Die Auswahl beim Zuordnen zeigt **nur Device Roles, die noch keiner CI-Klasse zugeordnet sind**. Bereits verknüpfte Rollen erscheinen nicht in der Auswahl (eindeutige 1:1-Zuordnung pro Device Role).
 
 **Beim CI-Sync:**
 
-- Wenn eindeutiges Mapping existiert → `ci_class_id` am CI automatisch setzen
-- Wenn kein Mapping existiert → CI bleibt „unklassifiziert“
-- Kein automatischer Sync-Fehler bei fehlender Klassifizierung
+- Wenn Mapping existiert → `ci_class_id` am CI automatisch setzen (über Device Role).
+- Wenn kein Mapping existiert → CI bleibt „unklassifiziert“.
+- Kein automatischer Sync-Fehler bei fehlender Klassifizierung.
 
 ---
 

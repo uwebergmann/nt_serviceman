@@ -17,7 +17,8 @@
                 <field name="netbox_display"/>
                 <field name="netbox_serial"/>
                 <field name="netbox_device_type"/>
-                <field name="netbox_role"/>
+                <field name="netbox_role_id"/>
+                <field name="netbox_role_netbox_id"/>
             </tree>
         </field>
     </record>
@@ -40,13 +41,17 @@
                     <group col="2" class="mt16">
                         <group string="">
                             <field name="netbox_id"/>
+                            <field name="ci_class_id"/>
                         </group>
                         <group string="NetBox-Daten">
                             <field name="netbox_display_link" string="Anzeigename"/>
                             <field name="netbox_serial"/>
                             <field name="netbox_device_type"/>
-                            <field name="netbox_role"/>
+                            <field name="netbox_role_id" string="Rolle im DCIM"/>
+                            <field name="netbox_role_netbox_id" attrs="{'invisible': [('netbox_role_id', '=', False)]}"/>
                             <field name="netbox_tenant_name"/>
+                            <field name="netbox_created"/>
+                            <field name="netbox_last_updated"/>
                             <field name="netbox_last_sync"/>
                             <field name="netbox_sync_state"/>
                             <field name="netbox_sync_error" attrs="{'invisible': [('netbox_sync_state', '!=', 'failed')]}"/>
