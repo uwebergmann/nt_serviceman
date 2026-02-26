@@ -55,4 +55,11 @@ action = {
 }
         </field>
     </record>
+
+    <menuitem id="menu_nt_serviceman_config_settings"
+              name="Einstellungen"
+              parent="menu_nt_serviceman_config"
+              action="action_nt_serviceman_config_server"
+              sequence="10"
+              groups="nt_serviceman.group_nt_serviceman_admin"/>
 </odoo>

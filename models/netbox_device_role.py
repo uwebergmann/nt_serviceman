@@ -73,7 +73,8 @@ class NetBoxDeviceRole(models.Model):
 
     def action_fetch_from_netbox(self):
         """Holt alle Device Roles von NetBox und aktualisiert die lokale Tabelle."""
-        config = self.env["nt_serviceman.config"].search([], limit=1)
+        # Operative Nutzer dürfen den Abruf auslösen; Konfiguration wird intern mit Admin-Rechten gelesen.
+        config = self.env["nt_serviceman.config"].sudo().search([], limit=1)
         base_url = (config.netbox_base_url or "").strip().rstrip("/")
         token = (config.netbox_api_token or "").strip()
 

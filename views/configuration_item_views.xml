@@ -44,7 +44,7 @@
                             <field name="ci_class_id"/>
                         </group>
                         <group string="NetBox-Daten">
-                            <field name="netbox_display_link" string="Anzeigename"/>
+                            <field name="netbox_display_link" string="NetBox-Link"/>
                             <field name="netbox_serial"/>
                             <field name="netbox_device_type"/>
                             <field name="netbox_role_id" string="Rolle im DCIM"/>
@@ -76,5 +76,6 @@
               name="CI-Einträge"
               parent="menu_nt_serviceman_root"
               action="action_configuration_item"
-              sequence="12"/>
+              sequence="12"
+              groups="nt_serviceman.group_nt_serviceman_admin,nt_serviceman.group_nt_serviceman_user"/>
 </odoo>

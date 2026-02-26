@@ -37,7 +37,7 @@ class ConfigurationItem(models.Model):
         help="Link zum Gerät in der NetBox-Weboberfläche.",
     )
     netbox_display_link = fields.Html(
-        string="Anzeigename",
+        string="NetBox-Link",
         compute="_compute_netbox_display_link",
         sanitize=False,
     )
@@ -166,7 +166,8 @@ class ConfigurationItem(models.Model):
     def action_fetch_from_netbox(self):
         """Ruft das Gerät per REST aus NetBox ab und speichert die Rohdaten."""
         self.ensure_one()
-        config = self.env["nt_serviceman.config"].search([], limit=1)
+        # Nutzer dürfen den Sync auslösen; Konfiguration wird intern mit Admin-Rechten gelesen.
+        config = self.env["nt_serviceman.config"].sudo().search([], limit=1)
         base_url = (config.netbox_base_url or "").strip().rstrip("/")
         nb_id = (self.netbox_id or "").strip()
 

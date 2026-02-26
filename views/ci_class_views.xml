@@ -67,4 +67,11 @@
             </p>
         </field>
     </record>
+
+    <menuitem id="menu_ci_class"
+              name="CI-Klassen"
+              parent="menu_nt_serviceman_data"
+              action="action_ci_class"
+              sequence="5"
+              groups="nt_serviceman.group_nt_serviceman_admin,nt_serviceman.group_nt_serviceman_user"/>
 </odoo>

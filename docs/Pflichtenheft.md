@@ -165,7 +165,7 @@ Die Version gilt als erfolgreich umgesetzt, wenn:
 2. **Planpositionen** (Geräteklasse + Planmenge) sind am Vertrag abbildbar.
 3. Ein **reales CI** kann in Odoo angelegt werden.
 4. Das CI hat ein editierbares Feld **NetBox-ID**. Ohne gültige NetBox-ID ist kein Abruf möglich.
-5. Per Button **„Hole von NetBox“** wird der REST-Abruf ausgelöst (nur wenn NetBox-ID ausgefüllt).
+5. Per Button **„Hole von NetBox“** wird der REST-Abruf ausgelöst (nur wenn NetBox-ID ausgefüllt). Der Button ist für **NT:ServiceMan Admin** und **NT:ServiceMan Nutzer** bedienbar.
 6. Mindestens folgende Felder werden aus NetBox übernommen und **readonly** angezeigt:
    - NetBox-ID
    - Geräte-Name
@@ -215,14 +215,23 @@ Zugriff nur für Benutzer mit der Gruppe **NT:ServiceMan Admin**.
 
 ### 7.0.1 Menüsichtbarkeit und Benutzerzugriff
 
-- **App-Kachel** (NT:ServiceMan auf der Startseite):  
-  Für alle Benutzer sichtbar (base.group_user).
+Es gelten genau drei Rollen:
 
-- **Konfiguration** (inklusive aller zukünftigen Untermenüpunkte wie Einstellungen):  
-  Sichtbar und bedienbar nur für Nutzer, die die Gruppe **NT:ServiceMan Admin** haben (Checkbox beim Benutzer gesetzt).
+- **NT:ServiceMan Admin**
+- **NT:ServiceMan Nutzer**
+- **alle anderen Benutzer** (keine der beiden Gruppen)
 
-- **Rest der App** (Daten, CI-Einträge sowie zukünftige operative Menüpunkte):  
-  Für alle Benutzer sichtbar und bedienbar.
+**Berechtigungsmatrix:**
+
+- **NT:ServiceMan Admin:**  
+  Vollzugriff auf die komplette App (inkl. Konfiguration und aller Buttons/Aktionen).
+
+- **NT:ServiceMan Nutzer:**  
+  Zugriff auf operative Menüs und Formulare (z.B. CI-Einträge, Device Roles, CI-Klassen), inklusive Bedienung der Buttons in den Formularen (z.B. **„Hole von NetBox“**).  
+  **Kein Zugriff** auf das Menü **Konfiguration** und dessen Unterpunkte.
+
+- **alle anderen Benutzer:**  
+  **Kein Zugriff** auf NT:ServiceMan (keine App-Kachel, keine Menüs, keine Modelle).
 
 ### 7.1 Konfigurationsparameter NetBox
 
@@ -253,17 +262,24 @@ Die konkrete technische Entscheidung ist in der Implementierung festzulegen.
 
 ### 7.3 Rechte- und Sicherheitskonzept
 
-Der Zugriff auf die NetBox-Konfigurationsparameter ist **rollenbasiert** zu beschränken.
+Der Zugriff auf NT:ServiceMan erfolgt **rollenbasiert** über die Gruppen:
 
-- Lesender Zugriff:
-  - nur für Benutzer mit administrativen Rechten
-- Schreibender Zugriff:
-  - ausschließlich für Benutzer mit System-Administrator-Rechten
+- `nt_serviceman.group_nt_serviceman_admin` (NT:ServiceMan Admin)
+- `nt_serviceman.group_nt_serviceman_user` (NT:ServiceMan Nutzer)
 
-Normale Benutzer und Techniker dürfen:
+Die Berechtigungen sind wie folgt umzusetzen:
 
-- die NetBox-URL **nicht sehen**
-- das API-Token **nicht einsehen oder verändern**
+- **NT:ServiceMan Admin**
+  - Vollzugriff auf alle NT:ServiceMan-Modelle und Menüs
+  - exklusiver Zugriff auf **Konfiguration > Einstellungen**
+  - darf NetBox-URL/API-Token sehen und ändern
+
+- **NT:ServiceMan Nutzer**
+  - Vollzugriff auf operative NT:ServiceMan-Funktionen (CI, CI-Klassen, Device Roles, Formularaktionen)
+  - kein Zugriff auf Konfigurationsmenü und keine Einsicht in NetBox-URL/API-Token
+
+- **alle anderen**
+  - kein Zugriff auf die NT:ServiceMan-App
 
 ### 7.4 Änderbarkeit und Betrieb
 
@@ -435,6 +451,7 @@ Die Auswahl beim Zuordnen zeigt **nur Device Roles, die noch keiner CI-Klasse zu
 ### 9.1 Auslöser (v0.9)
 
 - Manuell durch Benutzeraktion: Button **„Hole von NetBox“**
+- Bedienbar für **NT:ServiceMan Admin** und **NT:ServiceMan Nutzer**
 - **Voraussetzung:** Das Feld NetBox-ID muss mit einer gültigen ID ausgefüllt sein; sonst ist kein Abruf möglich.
 
 ### 9.2 REST-Aufruf

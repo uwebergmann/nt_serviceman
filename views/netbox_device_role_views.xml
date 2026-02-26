@@ -42,5 +42,6 @@
               name="Device Roles"
               parent="menu_nt_serviceman_data"
               action="action_netbox_device_role"
-              sequence="15"/>
+              sequence="15"
+              groups="nt_serviceman.group_nt_serviceman_admin,nt_serviceman.group_nt_serviceman_user"/>
 </odoo>

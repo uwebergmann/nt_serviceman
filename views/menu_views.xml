@@ -7,34 +7,23 @@
     Autor: $Author$
 -->
 <odoo>
-    <!-- Hauptmenü / App-Kachel für NT:ServiceMan (für alle Benutzer sichtbar) -->
+    <!-- Hauptmenü / App-Kachel für NT:ServiceMan (nur Admin/Nutzer sichtbar) -->
     <menuitem id="menu_nt_serviceman_root"
               name="NT:ServiceMan"
               web_icon="nt_serviceman,static/description/icon.png"
               sequence="15"
-              groups="base.group_user"/>
+              groups="nt_serviceman.group_nt_serviceman_admin,nt_serviceman.group_nt_serviceman_user"/>
 
     <!-- Untermenü Daten -->
     <menuitem id="menu_nt_serviceman_data"
               name="Daten"
               parent="menu_nt_serviceman_root"
               sequence="10"/>
-    <menuitem id="menu_ci_class"
-              name="CI-Klassen"
-              parent="menu_nt_serviceman_data"
-              action="action_ci_class"
-              sequence="5"/>
 
     <!-- Konfiguration (nur Admin) -->
     <menuitem id="menu_nt_serviceman_config"
               name="Konfiguration"
               parent="menu_nt_serviceman_root"
               sequence="20"
-              groups="nt_serviceman.group_nt_serviceman_admin"/>
-    <menuitem id="menu_nt_serviceman_config_settings"
-              name="Einstellungen"
-              parent="menu_nt_serviceman_config"
-              action="action_nt_serviceman_config_server"
-              sequence="10"
               groups="nt_serviceman.group_nt_serviceman_admin"/>
 </odoo>

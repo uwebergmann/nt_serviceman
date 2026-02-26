@@ -7,8 +7,14 @@
     Autor: $Author$
 -->
 <odoo>
+    <record id="group_nt_serviceman_user" model="res.groups">
+        <field name="name">NT:ServiceMan Nutzer</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+    </record>
+
     <record id="group_nt_serviceman_admin" model="res.groups">
         <field name="name">NT:ServiceMan Admin</field>
         <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="implied_ids" eval="[(4, ref('nt_serviceman.group_nt_serviceman_user'))]"/>
     </record>
 </odoo>
