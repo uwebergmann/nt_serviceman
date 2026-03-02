@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------
 # © NETHINKS GmbH – Alle Rechte vorbehalten
-# Beschreibung: CI-Klasse – fachliche Geräteklasse (FW, SW, RTR, AP)
+# Beschreibung: CI-Klasse – fachliche Geräteklasse (Firewall, Switch, Router, Access Point)
 # Letzte Änderung: $LastChanged$
 # Commit: $CommitId$
 # Autor: $Author$
@@ -19,7 +19,7 @@ class CIClass(models.Model):
     code = fields.Char(
         string="Kurzcode",
         required=True,
-        help="z.B. FW, SW, RTR, AP",
+        help="z.B. Firewall, Switch, Router, Access Point",
     )
     name = fields.Char(
         string="Bezeichnung",

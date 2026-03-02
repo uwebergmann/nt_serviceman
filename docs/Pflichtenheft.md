@@ -72,7 +72,7 @@ Diese ersetzt die frühere Idee von „leeren CI“.
 Ein Vertrag (z.B. NT/Care) enthält:
 
 **A) Planpositionen (Vertriebsplanung)**
-- Geräteklasse (z.B. FW, SW, RTR, AP)
+- Geräteklasse (z.B. Firewall, Switch, Router, Access Point)
 - geplante Menge
 
 Diese Planpositionen:
@@ -96,10 +96,10 @@ Stattdessen:
 - aktiv/inaktiv schaltbar
 
 Für den Start werden vordefiniert:
-- FW (Firewall)
-- SW (Switch)
-- RTR (Router)
-- AP (Access Point)
+- Firewall
+- Switch
+- Router
+- Access Point
 
 Keine Server-, Storage- oder generischen IT-Klassen.
 
@@ -161,7 +161,7 @@ Diese Themen sind bewusst ausgeklammert, um einen schnellen und sauberen Start z
 
 Die Version gilt als erfolgreich umgesetzt, wenn:
 
-1. Das Modell **CI-Klasse** existiert (FW, SW, RTR, AP vordefiniert, konfigurierbar).
+1. Das Modell **CI-Klasse** existiert (Firewall, Switch, Router, Access Point vordefiniert, konfigurierbar).
 2. **Planpositionen** (Geräteklasse + Planmenge) sind am Vertrag abbildbar.
 3. Ein **reales CI** kann in Odoo angelegt werden.
 4. Das CI hat ein editierbares Feld **NetBox-ID**. Ohne gültige NetBox-ID ist kein Abruf möglich.
@@ -310,6 +310,8 @@ Die Änderung der Konfiguration darf keinen automatischen Re-Sync aller CI ausl�
 | netbox_sync_state | Selection | System | ok / failed | ✓ |
 | netbox_sync_error | Text | System | Fehlermeldung (nur bei Fehler sichtbar) | ✓ |
 | ci_class_id | Many2one | Mapping | CI-Klasse (via Role-Mapping, v0.9.1) | v0.9.1 |
+| cmdb_id | Integer | manuell | Legacy CMDB-ID (Abwärtskompatibilität); optional | v0.9.1 |
+| contract_id | Many2one | Zuordnung | Vertrag (contract.recurrent); CI gehört genau einem Vertrag | v0.9.1 |
 
 ### 8.2 Feldregeln
 
@@ -317,6 +319,8 @@ Die Änderung der Konfiguration darf keinen automatischen Re-Sync aller CI ausl�
 - alle anderen `netbox_*` Felder sind readonly
 - **netbox_created / netbox_last_updated:** Gleiche Sync-Logik wie bei NetBox Device Roles (Kap. 8.5): Feld leer oder NetBox jünger → Aktualisierung; sonst keine Änderung.
 - **ci_class_id:** Wird aus dem Mapping Device Role → CI-Klasse abgeleitet (readonly). Existiert ein Mapping für die NetBox-Device-Role des Geräts, wird die CI-Klasse angezeigt; sonst bleibt das Feld leer.
+- **cmdb_id:** Optional, editierbar; erhält das bisherige CMDB-ID-Feld für Abwärtskompatibilität.
+- **contract_id:** Editierbar; Zuordnung zum wiederkehrenden Vertrag. Ein CI gehört höchstens einem Vertrag.
 - Service-Felder sind in v0.9 nicht Bestandteil
 - **v0.9.1:** Anzeige der Rolle ausschließlich über Relation `netbox_role_id`; der Rollenname kommt aus `netbox_device_role.name` (Mapping Role-ID → Role-Name). Das bisherige Textfeld `netbox_role_name` entfällt.
 
@@ -332,7 +336,7 @@ Die Änderung der Konfiguration darf keinen automatischen Re-Sync aller CI ausl�
 ### 8.3 CI-Klassen (Geräteklassen)
 
 Vgl. Abschnitt 8.4. Konfigurierbares Modell „CI-Klasse“ mit vordefinierten Werten 
-FW, SW, RTR, AP für den Start. Frei anlegbar, aktiv/inaktiv schaltbar.
+Firewall, Switch, Router, Access Point für den Start. Frei anlegbar, aktiv/inaktiv schaltbar.
 
 ---
 
@@ -344,7 +348,7 @@ Einführung eines konfigurierbaren Modells **„CI-Klasse“** als fachliche Ebe
 
 | Feld | Typ | Beschreibung |
 |------|-----|--------------|
-| code | Char | Kurzcode (z.B. FW, SW, RTR, AP) |
+| code | Char | Kurzcode (z.B. Firewall, Switch, Router, Access Point) |
 | name | Char | Bezeichnung |
 | description | Text | Optionale Beschreibung |
 | active | Boolean | Aktiv/Inaktiv schaltbar |
@@ -502,6 +506,38 @@ Ein Vertrag enthält zwei Ebenen (vgl. Abschnitt 2.2):
 - CI stammen aus NetBox, sind portal-sichtbar, abrechnungsrelevant.
 - CI werden im Vertrag tabellarisch angezeigt (Name, CI-Klasse, Rolle/Tenant). **v0.9.1:** Primär CI-Klasse, Device Role als Detail.
 
+### 11.1 CMDB-Tab Wiederverwendung (v0.9.1)
+
+**Abhängigkeit:** NT:ServiceMan hängt von `intero_net` ab (Modell `contract.recurrent`).
+
+Der bestehende **CMDB-Tab** am Vertragsformular (`contract.recurrent`) wird wiederverwendet und mit der CI-Verlinkung belegt.
+
+**Vorgehen:**
+- Der Tab „CMDB“ bleibt erhalten.
+- Die bisherige Tabelle (cmdb.line) wird durch die **CI-Liste** ersetzt.
+- Die Anzeige zeigt die dem Vertrag zugeordneten Configuration Items.
+
+**Das Feld CMDB-ID bleibt erhalten:**
+- Das CI-Modell erhält ein optionales Feld `cmdb_id` (Integer) für Abwärtskompatibilität.
+- Die Spalte CMDB-ID wird in der neuen CI-Tabelle im Vertrag angezeigt.
+
+**Tab-Spalten (Mindestumfang):**
+| Spalte | Beschreibung |
+|--------|--------------|
+| CMDB-ID | cmdb_id (optional, Legacy) |
+| Name | CI-Name / Anzeigename |
+| CI-Klasse | Firewall, Switch, Router, Access Point etc. |
+| Device Role | NetBox Device Role |
+| NetBox-Link | Klickbarer Link zum Gerät in NetBox |
+
+**Zuordnungswege (beide möglich):**
+1. **Im Vertrag:** Button „Zeile hinzufügen“ im CMDB-Tab → Auswahldialog für CI; Standard-Filter „nur unzugeordnete CI“.
+2. **Im CI:** Feld „Vertrag“ (contract_id) setzen.
+
+**Hinweis zu bestehenden cmdb.line-Daten:** Die bisherige cmdb.line-Tabelle wird im Tab durch die CI-Liste ersetzt. Bestehende cmdb.line-Einträge bleiben in der Datenbank erhalten; eine spätere Migration in CI (inkl. cmdb_id) kann separat geplant werden.
+
+**Ausblick Partner/Kunde:** Eine kaufmännische Zuordnung (z.B. partner_id) am CI ist für v0.9 nicht vorgesehen. Dies kann später ergänzt werden, wenn die NetBox-Felder (z.B. Tenant, Kundennummer) genauer betrachtet wurden.
+
 ---
 
 ## 12. Erweiterbarkeit
@@ -551,7 +587,8 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | 9 | **Einstellungen-Überschrift** | „Einstellungen NT:ServiceMan“ statt technischem Namen |
 | 10 | **Rechte** | Config nur für NT:ServiceMan Admin |
 | 11 | **Kap. 8.1 Felder** | netbox_tenant_name, netbox_last_sync, netbox_sync_state, netbox_sync_error |
-| 12 | **CI-Klasse** (Kap. 8.4) | Modell nt_serviceman.ci_class, FW/SW/RTR/AP vordefiniert |
+| 12 | **CI-Klasse** (Kap. 8.4) | Modell nt_serviceman.ci_class, Firewall/Switch/Router/Access Point vordefiniert |
+| 13 | **Vertragskopplung** (Kap. 11.1) | CMDB-Tab mit CI-Liste; cmdb_id, contract_id am CI; Wizard „CI zuordnen“; Zuordnung auch im CI-Formular |
 
 ## ⏳ Offen (v0.9 / v0.9.1)
 
@@ -561,7 +598,6 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | 2 | **Mapping** – netbox.role_ci_class_map, Zuordnung Role → CI-Klasse | Kap. 8.6 |
 | 3 | **CI-Feldanpassung** – netbox_role_id (Many2one), netbox_role_name entfällt | Kap. 8.1 |
 | 4 | **Planpositionen** am Vertrag | Kap. 2.2, 4.2, 11 |
-| 5 | **Vertragskopplung** | Ein Vertrag enthält mehrere CI, CI-Liste im Vertrag (Kap. 4.7 f., 11) |
-| 6 | **Plan/Ist-Vergleich** mit Hinweis bei Abweichung (Aktivität/Chatter) | Kap. 4.9 |
-| 7 | **Portal** – CI-Klasse primär, Device Role als Detail | Kap. 8.7 |
-| 8 | **Config in ir.config_parameter / res.company** (aktuell: eigenes Config-Modell) | Kap. 7.2 |
+| 5 | **Plan/Ist-Vergleich** mit Hinweis bei Abweichung (Aktivität/Chatter) | Kap. 4.9 |
+| 6 | **Portal** – CI-Klasse primär, Device Role als Detail | Kap. 8.7 |
+| 7 | **Config in ir.config_parameter / res.company** (aktuell: eigenes Config-Modell) | Kap. 7.2 |

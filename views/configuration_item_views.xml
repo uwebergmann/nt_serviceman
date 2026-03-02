@@ -13,7 +13,9 @@
         <field name="arch" type="xml">
             <tree string="Configuration Items">
                 <field name="name"/>
+                <field name="cmdb_id"/>
                 <field name="netbox_id"/>
+                <field name="contract_id"/>
                 <field name="netbox_display"/>
                 <field name="netbox_serial"/>
                 <field name="netbox_device_type"/>
@@ -42,6 +44,8 @@
                         <group string="">
                             <field name="netbox_id"/>
                             <field name="ci_class_id"/>
+                            <field name="cmdb_id"/>
+                            <field name="contract_id"/>
                         </group>
                         <group string="NetBox-Daten">
                             <field name="netbox_display_link" string="NetBox-Link"/>
@@ -70,6 +74,20 @@
         <field name="name">CI-Einträge</field>
         <field name="res_model">nt_serviceman.configuration_item</field>
         <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_configuration_item_search" model="ir.ui.view">
+        <field name="name">nt_serviceman.configuration_item.search</field>
+        <field name="model">nt_serviceman.configuration_item</field>
+        <field name="arch" type="xml">
+            <search string="Configuration Items">
+                <filter string="Unzugeordnet" name="no_contract"
+                        domain="[('contract_id', '=', False)]"/>
+                <group expand="0" string="Gruppieren nach">
+                    <filter string="Vertrag" name="group_contract" context="{'group_by': 'contract_id'}"/>
+                </group>
+            </search>
+        </field>
     </record>
 
     <menuitem id="menu_configuration_item"

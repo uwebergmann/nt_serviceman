@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Beschreibung: Wizard CI zu Vertrag zuordnen
+-->
+<odoo>
+    <record id="view_contract_configuration_item_assign_form" model="ir.ui.view">
+        <field name="name">nt_serviceman.contract_configuration_item_assign.form</field>
+        <field name="model">nt_serviceman.contract_configuration_item_assign</field>
+        <field name="arch" type="xml">
+            <form string="CI zuordnen">
+                <group>
+                    <field name="contract_id"/>
+                </group>
+                <group string="Unzugeordnete CI auswählen">
+                    <field name="configuration_item_ids" nolabel="1" widget="many2many_tags"
+                           options="{'no_create': True}"/>
+                </group>
+                <footer>
+                    <button name="action_assign" string="Zuordnen" type="object" class="btn-primary"/>
+                    <button string="Abbrechen" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -10,3 +10,4 @@ from . import config
 from . import ci_class
 from . import configuration_item
 from . import netbox_device_role
+from . import contract_recurrent

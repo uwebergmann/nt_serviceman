@@ -12,7 +12,8 @@ from datetime import datetime
 import markupsafe
 import requests
 
-from odoo import fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class ConfigurationItem(models.Model):
@@ -20,6 +21,13 @@ class ConfigurationItem(models.Model):
 
     _name = "nt_serviceman.configuration_item"
     _description = "Configuration Item (CI)"
+    _sql_constraints = [
+        (
+            "netbox_id_unique",
+            "UNIQUE(netbox_id)",
+            "Die NetBox-ID muss eindeutig sein. Jedes NetBox-Gerät darf nur einmal in Odoo existieren.",
+        ),
+    ]
 
     name = fields.Char(
         string="Name",
@@ -100,6 +108,51 @@ class ConfigurationItem(models.Model):
         readonly=True,
         help="Rohe API-Antwort von NetBox (Debugging).",
     )
+    cmdb_id = fields.Integer(
+        string="CMDB-ID",
+        help="Legacy CMDB-ID (Abwärtskompatibilität); optional.",
+    )
+    contract_id = fields.Many2one(
+        "contract.recurrent",
+        string="Vertrag",
+        ondelete="set null",
+        help="Wiederkehrender Vertrag, dem dieses CI zugeordnet ist.",
+    )
+
+    def _netbox_device_exists(self, netbox_id):
+        """Prüft, ob ein Device mit der NetBox-ID in NetBox existiert."""
+        if not netbox_id or not (netbox_id := str(netbox_id).strip()):
+            return True  # Leer = keine Prüfung
+        config = self.env["nt_serviceman.config"].search([], limit=1)
+        base_url = (config.netbox_base_url or "").strip().rstrip("/")
+        if not base_url:
+            return True  # Keine Config = Prüfung überspringen
+        url = f"{base_url}/api/dcim/devices/{netbox_id}/"
+        headers = {}
+        token = (config.netbox_api_token or "").strip()
+        if token:
+            headers["Authorization"] = f"Token {token}"
+        try:
+            r = requests.get(url, headers=headers, timeout=15, verify=False)
+            return r.status_code == 200
+        except requests.RequestException:
+            return False
+
+    @api.constrains("netbox_id")
+    def _check_netbox_id_exists(self):
+        """NetBox-ID darf nur gespeichert werden, wenn das Gerät in NetBox existiert."""
+        for rec in self:
+            if not rec.netbox_id or not str(rec.netbox_id).strip():
+                continue
+            if not rec._netbox_device_exists(rec.netbox_id):
+                raise ValidationError(
+                    _(
+                        "Die NetBox-ID '%s' existiert nicht in NetBox. "
+                        "Das CI kann nicht gespeichert werden. "
+                        "Bitte prüfen Sie die ID oder entfernen Sie sie."
+                    )
+                    % rec.netbox_id
+                )
 
     def _parse_netbox_datetime(self, val):
         """NetBox created/last_updated → Odoo Datetime-String (UTC)."""
@@ -162,6 +215,10 @@ class ConfigurationItem(models.Model):
         self.netbox_tenant_name = tenant.get("display") or tenant.get("name") or ""
         self.netbox_created = self._parse_netbox_datetime(data.get("created"))
         self.netbox_last_updated = self._parse_netbox_datetime(data.get("last_updated"))
+
+    def action_unassign_contract(self):
+        """Entfernt das CI aus dem Vertrag (setzt contract_id zurück)."""
+        self.write({"contract_id": False})
 
     def action_fetch_from_netbox(self):
         """Ruft das Gerät per REST aus NetBox ab und speichert die Rohdaten."""

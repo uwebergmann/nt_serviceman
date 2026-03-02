@@ -8,12 +8,12 @@
 
 {
     "name": "NT:ServiceMan",
-    "version": "0.9.6",
+    "version": "0.9.7",
     "author": "NETHINKS GmbH",
     "summary": "Abbildung von Configuration Items (CI) aus NetBox, Vertragszuordnung",
     "category": "Services",
     "license": "Other proprietary",
-    "depends": ["base"],
+    "depends": ["base", "intero_net"],
     "external_dependencies": {"python": ["requests"]},
     "data": [
         "security/security.xml",
@@ -24,7 +24,9 @@
         "views/ci_class_views.xml",
         "views/netbox_device_role_views.xml",
         "views/configuration_item_views.xml",
+        "views/contract_recurrent_views.xml",
         "wizard/ci_class_device_role_assign_views.xml",
+        "wizard/contract_configuration_item_assign_views.xml",
     ],
     "installable": True,
     "application": True,

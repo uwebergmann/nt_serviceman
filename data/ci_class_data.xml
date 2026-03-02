@@ -6,25 +6,25 @@
 <odoo>
     <data noupdate="1">
         <record id="ci_class_fw" model="nt_serviceman.ci_class">
-            <field name="code">FW</field>
+            <field name="code">Firewall</field>
             <field name="name">Firewall</field>
             <field name="description">Firewall-Geräte</field>
             <field name="active">True</field>
         </record>
         <record id="ci_class_sw" model="nt_serviceman.ci_class">
-            <field name="code">SW</field>
+            <field name="code">Switch</field>
             <field name="name">Switch</field>
             <field name="description">Switch-Geräte</field>
             <field name="active">True</field>
         </record>
         <record id="ci_class_rtr" model="nt_serviceman.ci_class">
-            <field name="code">RTR</field>
+            <field name="code">Router</field>
             <field name="name">Router</field>
             <field name="description">Router-Geräte</field>
             <field name="active">True</field>
         </record>
         <record id="ci_class_ap" model="nt_serviceman.ci_class">
-            <field name="code">AP</field>
+            <field name="code">Access Point</field>
             <field name="name">Access Point</field>
             <field name="description">Access Points</field>
             <field name="active">True</field>
