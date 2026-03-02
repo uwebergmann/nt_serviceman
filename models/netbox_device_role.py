@@ -10,7 +10,7 @@ from datetime import datetime
 
 import requests
 
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 
 
 class NetBoxDeviceRole(models.Model):
@@ -71,6 +71,7 @@ class NetBoxDeviceRole(models.Model):
             return False
         return fields.Datetime.to_string(dt) if dt else False
 
+    @api.model
     def action_fetch_from_netbox(self):
         """Holt alle Device Roles von NetBox und aktualisiert die lokale Tabelle."""
         # Operative Nutzer dürfen den Abruf auslösen; Konfiguration wird intern mit Admin-Rechten gelesen.
@@ -178,6 +179,8 @@ class NetBoxDeviceRole(models.Model):
         if archived:
             parts.append(_("%s archiviert (in NetBox gelöscht)") % archived)
         message = ", ".join(parts) if parts else _("Keine Änderungen.")
+        # Action-ID als Zahl übergeben, damit der Client die Action vollständig per RPC lädt (inkl. views)
+        next_action_id = self.env.ref("nt_serviceman.action_netbox_device_role").id
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
@@ -186,5 +189,6 @@ class NetBoxDeviceRole(models.Model):
                 "message": message,
                 "type": "success",
                 "sticky": False,
+                "next": next_action_id,
             },
         }

@@ -20,6 +20,7 @@
         "security/ir.model.access.csv",
         "views/menu_views.xml",
         "data/ci_class_data.xml",
+        "data/ir_actions_server_data.xml",
         "views/config_views.xml",
         "views/ci_class_views.xml",
         "views/netbox_device_role_views.xml",

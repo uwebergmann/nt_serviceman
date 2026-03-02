@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Server-Aktion: Device Roles von NetBox abrufen (ohne Zeilenauswahl)
+-->
+<odoo>
+    <data noupdate="1">
+        <record id="action_server_fetch_device_roles" model="ir.actions.server">
+            <field name="name">Device Roles von NetBox abrufen</field>
+            <field name="model_id" ref="model_nt_serviceman_netbox_device_role"/>
+            <field name="binding_model_id" ref="model_nt_serviceman_netbox_device_role"/>
+            <field name="binding_view_types">list</field>
+            <field name="state">code</field>
+            <field name="code">action = model.action_fetch_from_netbox()</field>
+        </record>
+    </data>
+</odoo>

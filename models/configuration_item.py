@@ -216,6 +216,17 @@ class ConfigurationItem(models.Model):
         self.netbox_created = self._parse_netbox_datetime(data.get("created"))
         self.netbox_last_updated = self._parse_netbox_datetime(data.get("last_updated"))
 
+    def action_open_form(self):
+        """Öffnet das CI im Formular."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "nt_serviceman.configuration_item",
+            "res_id": self.id,
+            "view_mode": "form",
+            "target": "current",
+        }
+
     def action_unassign_contract(self):
         """Entfernt das CI aus dem Vertrag (setzt contract_id zurück)."""
         self.write({"contract_id": False})

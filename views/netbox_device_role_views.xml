@@ -9,10 +9,6 @@
         <field name="model">nt_serviceman.netbox_device_role</field>
         <field name="arch" type="xml">
             <tree string="Device Roles" decoration-muted="not active" create="false" delete="false" editable="bottom">
-                <header>
-                    <button name="action_fetch_from_netbox" type="object"
-                            string="Von NetBox abrufen" class="btn-primary"/>
-                </header>
                 <field name="netbox_id"/>
                 <field name="name"/>
                 <field name="ci_class_id"/>
@@ -29,7 +25,7 @@
         <field name="view_mode">tree</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Device Roles abrufen: Einstellungen NT:ServiceMan → „Device Roles von NetBox abrufen“
+                Device Roles abrufen: Über das Menü <strong>Aktion</strong> → „Device Roles von NetBox abrufen“ (ohne Auswahl)
             </p>
             <p>
                 Die Device Roles werden ausschließlich aus NetBox übernommen.
@@ -37,6 +33,13 @@
             </p>
         </field>
     </record>
+
+    <menuitem id="menu_fetch_device_roles_from_netbox"
+              name="Device Roles von NetBox abrufen"
+              parent="menu_nt_serviceman_data"
+              action="action_server_fetch_device_roles"
+              sequence="14"
+              groups="nt_serviceman.group_nt_serviceman_admin,nt_serviceman.group_nt_serviceman_user"/>
 
     <menuitem id="menu_netbox_device_role"
               name="Device Roles"

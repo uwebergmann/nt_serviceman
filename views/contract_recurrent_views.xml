@@ -24,6 +24,9 @@
                             <field name="ci_class_id"/>
                             <field name="netbox_role_id"/>
                             <field name="netbox_display_url" string="NetBox" widget="url"/>
+                            <button name="action_open_form" type="object"
+                                    string="→ Formular" icon="fa-arrow-right" class="btn-link"
+                                    title="CI im Formular öffnen"/>
                             <button name="action_unassign_contract" type="object"
                                     string="Entfernen" icon="fa-times" class="btn-link"
                                     title="CI aus Vertrag entfernen"/>
