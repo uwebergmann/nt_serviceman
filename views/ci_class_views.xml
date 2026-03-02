@@ -35,6 +35,12 @@
                             <field name="description" placeholder="Optionale Beschreibung"/>
                         </group>
                     </group>
+                    <group string="Verfügbare Leistungen" col="2">
+                        <field name="service_ids" nolabel="1" colspan="2"
+                               widget="many2many_checkboxes"
+                               options="{'no_create': True}"
+                               class="o_ci_service_checkboxes"/>
+                    </group>
                     <group string="Device Roles">
                         <div class="mt8">
                             <button name="action_assign_device_roles" type="object"

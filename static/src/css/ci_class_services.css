@@ -1,0 +1,12 @@
+/* Verfügbare Leistungen: Checkboxen in 2-Spalten-Grid */
+.o_ci_service_checkboxes [aria-atomic="true"] {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem 2rem;
+}
+
+@media (min-width: 1200px) {
+    .o_ci_service_checkboxes [aria-atomic="true"] {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}

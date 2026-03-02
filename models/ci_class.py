@@ -33,6 +33,14 @@ class CIClass(models.Model):
         string="Device Roles",
         help="NetBox Device Roles, die dieser CI-Klasse zugeordnet sind.",
     )
+    service_ids = fields.Many2many(
+        "nt_serviceman.service",
+        "nt_serviceman_ci_class_service_rel",
+        "ci_class_id",
+        "service_id",
+        string="Verfügbare Leistungen",
+        help="Leistungen, die für diese Geräteklasse möglich sind (Kap. 8.8).",
+    )
 
     def action_open_form(self):
         """Öffnet die CI-Klasse im Formular."""

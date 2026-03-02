@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Beschreibung: Views für Leistungen (Kap. 8.7 Pflichtenheft)
+-->
+<odoo>
+    <record id="view_service_tree" model="ir.ui.view">
+        <field name="name">nt_serviceman.service.tree</field>
+        <field name="model">nt_serviceman.service</field>
+        <field name="arch" type="xml">
+            <tree string="Leistungen" decoration-muted="not active" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="description"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_service" model="ir.actions.act_window">
+        <field name="name">Leistungen</field>
+        <field name="res_model">nt_serviceman.service</field>
+        <field name="view_mode">tree</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Leistungen definieren die Dienstleistungen, die NETHINKS grundsätzlich erbringen kann.
+            </p>
+            <p>
+                Die Liste wird bei Installation mit sieben Standard-Leistungen vorgefüllt
+                und kann frei ergänzt oder angepasst werden.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_service"
+              name="Leistungen"
+              parent="menu_nt_serviceman_config"
+              action="action_service"
+              sequence="15"
+              groups="nt_serviceman.group_nt_serviceman_admin"/>
+</odoo>

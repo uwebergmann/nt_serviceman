@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Beschreibung: Standard-Leistungen (Kap. 8.7 Pflichtenheft)
+-->
+<odoo>
+    <data noupdate="0">
+        <record id="service_dokumentation" model="nt_serviceman.service">
+            <field name="code">Dokumentation</field>
+            <field name="name">Dokumentation</field>
+            <field name="description">Managementeinheit in Doku erfasst</field>
+            <field name="sequence">10</field>
+            <field name="active">True</field>
+        </record>
+        <record id="service_beratung" model="nt_serviceman.service">
+            <field name="code">Konfigurations-Service</field>
+            <field name="name">Konfigurations-Service</field>
+            <field name="description">Unterstützung bei Konfiguration und Betrieb der Managementeinheit</field>
+            <field name="sequence">20</field>
+            <field name="active">True</field>
+        </record>
+        <record id="service_information" model="nt_serviceman.service">
+            <field name="code">Proaktiver Sicherheits-Service (CVE)</field>
+            <field name="name">Proaktiver Sicherheits-Service (CVE)</field>
+            <field name="description">E-Mail zu CVE/Sicherheitslücken + Maßnahmen</field>
+            <field name="sequence">30</field>
+            <field name="active">True</field>
+        </record>
+        <record id="service_update" model="nt_serviceman.service">
+            <field name="code">Update-Service</field>
+            <field name="name">Update-Service</field>
+            <field name="description">Service-Updates gemäß Basisvertrag</field>
+            <field name="sequence">40</field>
+            <field name="active">True</field>
+        </record>
+        <record id="service_backup" model="nt_serviceman.service">
+            <field name="code">Backup-Service</field>
+            <field name="name">Backup-Service</field>
+            <field name="description">Regelmäßige Konfig-Speicherung, Wiederherstellung auf Anfrage</field>
+            <field name="sequence">50</field>
+            <field name="active">True</field>
+        </record>
+        <record id="service_2nd_level_support" model="nt_serviceman.service">
+            <field name="code">2nd-Level-Support</field>
+            <field name="name">2nd Level Support</field>
+            <field name="description">Eskalation an Gerätehersteller/Drittanbieter</field>
+            <field name="sequence">60</field>
+            <field name="active">True</field>
+        </record>
+        <record id="service_2nd_level_management" model="nt_serviceman.service">
+            <field name="code">2nd-Level-Management</field>
+            <field name="name">2nd Level Management</field>
+            <field name="description">Zusätzliche Supportleistung bei Bedarf (vgl. 2nd Level Support)</field>
+            <field name="sequence">70</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>

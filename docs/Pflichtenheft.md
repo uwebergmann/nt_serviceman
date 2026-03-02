@@ -2,7 +2,7 @@
 ## NT:ServiceMan v0.9 – CI-Abbildung in Odoo mit NetBox-REST-Anbindung
 
 **Projekt:** NT:ServiceMan  
-**Version:** 0.9 / 0.9.1 (Architekturerweiterung)  
+**Version:** 0.9 / 0.9.1 / 0.9.2 (Leistungen, Matrix Verfügbarkeit)  
 **Status:** Pflichtenheft  
 **Ziel:** Startfähigkeit herstellen, fachliche/technische Ebenen trennen  
 **Nicht-Ziel:** Vollständige Automatisierung
@@ -201,9 +201,11 @@ Vgl. Abschnitt 2.6. Ergänzend:
 Zur Anbindung von NetBox wird in Odoo eine zentrale Systemkonfiguration eingeführt.
 Diese Konfiguration ist **nicht CI-spezifisch**, sondern gilt systemweit.
 
-### 7.0 Benutzeroberfläche (Einstellungen)
+### 7.0 Benutzeroberfläche (Konfiguration)
 
-Unter **NT:ServiceMan > Konfiguration > Einstellungen** wird ein Formular bereitgestellt mit:
+Unter **NT:ServiceMan > Konfiguration** werden folgende Bereiche bereitgestellt:
+
+**Einstellungen** (NetBox-Anbindung):
 
 | Feld             | Typ    | Beschreibung                                      |
 |------------------|--------|---------------------------------------------------|
@@ -211,7 +213,11 @@ Unter **NT:ServiceMan > Konfiguration > Einstellungen** wird ein Formular bereit
 | **Test URL**     | Button | Prüft die Verbindung: (1) Server erreichbar, (2) REST-API antwortet, (3) NetBox-API-Struktur erkannt |
 | **Test-Ergebnis**| Text   | Ausgabe des URL-Tests (readonly)                  |
 
-Zugriff nur für Benutzer mit der Gruppe **NT:ServiceMan Admin**.
+**Leistungen** (v0.9.2): Editierbare Liste der erbringbaren Leistungen; vgl. Kap. 8.7.
+
+**Leistung pro Geräteklasse** (v0.9.2): Konfiguration, welche Leistung für welche CI-Klasse verfügbar ist; vgl. Kap. 8.8. Die Zuordnung erfolgt im CI-Klasse-Formular.
+
+Zugriff auf alle Konfigurationsbereiche nur für **NT:ServiceMan Admin**.
 
 ### 7.0.1 Menüsichtbarkeit und Benutzerzugriff
 
@@ -443,7 +449,70 @@ Die Auswahl beim Zuordnen zeigt **nur Device Roles, die noch keiner CI-Klasse zu
 
 ---
 
-## 8.7 Anzeige im Portal (v0.9.1)
+## 8.7 Leistungen (Services) – v0.9.2
+
+Es wird eine **editierbare Liste der Leistungen** eingeführt, die NETHINKS grundsätzlich erbringen kann.
+Diese Liste bildet die Grundlage für spätere Paketlogik, Vertriebsberechnung und CI-Anreicherung.
+
+**Modell:** `nt_serviceman.service` (Leistung)
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| code | Char | Kurzcode (z.B. Dokumentation, Update-Service) |
+| name | Char | Bezeichnung |
+| description | Text | Ausführliche Beschreibung der Leistung |
+| active | Boolean | Aktiv/Inaktiv schaltbar |
+| sequence | Integer | Sortierreihenfolge (für Anzeige) |
+
+**Vorbefüllung bei Installation:** Die folgenden sieben Leistungen werden als Stammdaten angelegt:
+
+| Code | Name | Beschreibung |
+|------|------|--------------|
+| Dokumentation | Dokumentation | Managementeinheit in Doku erfasst |
+| Konfigurations-Service | Konfigurations-Service | Unterstützung bei Konfiguration und Betrieb der Managementeinheit |
+| Proaktiver Sicherheits-Service (CVE) | Proaktiver Sicherheits-Service (CVE) | E-Mail zu CVE/Sicherheitslücken + Maßnahmen |
+| Update-Service | Update-Service | Service-Updates gemäß Basisvertrag |
+| Backup-Service | Backup-Service | Regelmäßige Konfig-Speicherung, Wiederherstellung auf Anfrage |
+| 2nd-Level-Support | 2nd Level Support | Eskalation an Gerätehersteller/Drittanbieter |
+| 2nd-Level-Management | 2nd Level Management | Zusätzliche Supportleistung bei Bedarf (vgl. 2nd Level Support) |
+
+**Benutzerschnittstelle:**
+- Menü **NT:ServiceMan > Konfiguration > Leistungen**
+- Liste mit inline Bearbeitung (code, name, description)
+- Zugriff nur für **NT:ServiceMan Admin**
+- Neue Leistungen können ergänzt, bestehende archiviert (active=False) werden
+
+---
+
+## 8.8 Matrix: Leistung × CI-Klasse (Verfügbarkeit) – v0.9.2
+
+Es wird festgelegt, welche Leistung für welche Geräteklasse **grundsätzlich möglich** ist.
+Diese Zuordnung ist unabhängig von Paketen und Preisen; sie definiert nur die technisch/fachliche Machbarkeit.
+
+**Beispiel:** Für einen WLAN-AP (der über einen Controller gemanaged wird) ist „Konfig-Sicherung“ in der Regel nicht sinnvoll → nicht verfügbar.
+
+**Technische Abbildung:**
+
+- Modell `nt_serviceman.ci_class`: zusätzliches Feld `service_ids` (Many2many → `nt_serviceman.service`, relation optional benannt)
+- Bedeutet: Pro CI-Klasse werden die **verfügbaren Leistungen** ausgewählt
+- Keine Zuordnung = Leistung ist für diese Geräteklasse **nicht verfügbar**
+
+**Benutzerschnittstelle:**
+
+- Im **CI-Klasse-Formular** (unter Konfiguration > CI-Klassen): neuer Bereich „Verfügbare Leistungen“
+- Liste/Checkboxen: welche Leistungen sind für diese Geräteklasse möglich?
+- Z.B. Firewall: alle sieben Leistungen; WLAN-AP: nur Dokumentation, Beratung, Update-Service (ohne CVE, Backup, 2nd Level)
+
+**Alternativ (falls gewünscht):** Matrix-Ansicht unter Konfiguration: Geräteklassen als Zeilen, Leistungen als Spalten, Haken = verfügbar. Die konkrete Darstellung kann in der Implementierung gewählt werden.
+
+**Regeln:**
+- Die Matrix wird ausschließlich in Odoo gepflegt
+- Änderungen haben keine Auswirkung auf bestehende CI; sie dienen der Konfiguration für künftige Zuordnungen und Vertriebslogik
+- Ohne Eintrag in der Matrix gilt: Leistung für diese Geräteklasse nicht verfügbar
+
+---
+
+## 8.9 Anzeige im Portal (v0.9.1)
 
 - **Primär sichtbar:** CI-Klasse
 - **Device Role** nur als Detailinformation
@@ -538,6 +607,42 @@ Der bestehende **CMDB-Tab** am Vertragsformular (`contract.recurrent`) wird wied
 
 **Ausblick Partner/Kunde:** Eine kaufmännische Zuordnung (z.B. partner_id) am CI ist für v0.9 nicht vorgesehen. Dies kann später ergänzt werden, wenn die NetBox-Felder (z.B. Tenant, Kundennummer) genauer betrachtet wurden.
 
+### 11.2 Leistungsmatrix am Vertrag (v0.9.3)
+
+Im Vertragsformular wird eine **Matrix** eingeführt, die pro Vertrag festlegt:
+- welche Leistungen für welche CI-Klasse **gebucht werden können** (Checkbox = „kann gebucht werden")
+- welche **Menge** pro CI-Klasse vorgesehen ist (Ganzzahl ≥ 0)
+
+**Darstellung:**
+
+| CI-Klasse   | Menge | Dienstleistung 1 | Dienstleistung 2 | … |
+|-------------|:-----:|:----------------:|:----------------:|:-:|
+| Firewall    |  5    | ☐                | ☐                | … |
+| Switch      |  3    | ☐                | ☐                | … |
+| Access Point| 12    | ☐                | —                | … |
+
+- **Zeilen:** CI-Klassen (aktive Geräteklassen)
+- **Spalte Menge:** Ganzzahl ≥ 0 (Anzahl Geräte dieser Klasse im Vertrag)
+- **Checkbox-Spalten:** Eine pro Leistung; unbeschriftete Checkbox = diese Leistung kann für diese Klasse gebucht werden
+- **Leere Zelle (—):** Kein Feld, wenn die Leistung für diese CI-Klasse global nicht verfügbar ist (Konfiguration Kap. 8.8)
+
+**Datenmodell:**
+
+- Modell `nt_serviceman.contract_ci_class_matrix_line`:
+  - `contract_id` (Many2one → contract.recurrent)
+  - `ci_class_id` (Many2one → nt_serviceman.ci_class)
+  - `quantity` (Integer, default 0, ≥ 0)
+  - `service_ids` (Many2many → nt_serviceman.service) – Leistungen, die für diese Klasse gebucht werden können
+
+- Einschränkung: `service_ids` dürfen nur Leistungen enthalten, die in `ci_class_id.service_ids` (Kap. 8.8) stehen.
+
+**Benutzerschnittstelle:**
+
+- Neuer Tab **„Leistungsmatrix"** im Vertragsformular
+- Matrix als Tabelle: Zeilen = CI-Klassen, Spalten = Menge + Leistungen
+- Checkboxen und Mengen direkt editierbar
+- Nur sichtbar, wenn Vertrag nicht im Status „Verkauf" (analog CMDB-Tab)
+
 ---
 
 ## 12. Erweiterbarkeit
@@ -566,6 +671,8 @@ Version 0.9 ist ein Startpunkt – kein Endzustand.
 
 **Architekturerweiterung v0.9.1:** Trennung von fachlicher Ebene (CI-Klassen) und technischer Ebene (NetBox Device Roles). Das konfigurierbare Mapping ermöglicht eine flexible Zuordnung, ohne dass CI-Klassen an NetBox-Strukturen gebunden sind.
 
+**Erweiterung v0.9.2:** Einführung einer editierbaren Leistungsliste (Services) und einer Matrix, die festlegt, welche Leistung für welche Geräteklasse grundsätzlich verfügbar ist. Basis für spätere Paketlogik und Vertriebsberechnung.
+
 ---
 
 # Erledigte und offene Punkte: NT:ServiceMan
@@ -589,15 +696,18 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | 11 | **Kap. 8.1 Felder** | netbox_tenant_name, netbox_last_sync, netbox_sync_state, netbox_sync_error |
 | 12 | **CI-Klasse** (Kap. 8.4) | Modell nt_serviceman.ci_class, Firewall/Switch/Router/Access Point vordefiniert |
 | 13 | **Vertragskopplung** (Kap. 11.1) | CMDB-Tab mit CI-Liste; cmdb_id, contract_id am CI; Wizard „CI zuordnen“; Zuordnung auch im CI-Formular |
+| 14 | **NetBox Device Roles** (Kap. 8.5) | Modell nt_serviceman.netbox_device_role; Abruf aus /api/dcim/device-roles/; Upsert-Logik mit netbox_created/netbox_last_updated; Sync-Regeln (NetBox jünger → Update) |
+| 15 | **Mapping Device Role ↔ CI-Klasse** (Kap. 8.6) | ci_class_id am netbox_device_role (Many2one); Zuordnung in Device-Roles-Liste und CI-Klasse-Formular; Wizard „Device Roles zuordnen“ |
+| 16 | **CI netbox_role_id** (Kap. 8.1) | Many2one auf netbox_device_role; netbox_role_name entfällt; ci_class_id über Relation |
+| 17 | **Device Roles von NetBox abrufen** | Menüpunkt unter Daten; Button im Config-Formular; Auto-Refresh: Liste wird nach Abruf angezeigt |
+| 18 | **Leistungen** (Kap. 8.7) | Modell service, Liste mit 7 Vorbefüllungen, Menü Konfiguration > Leistungen | v0.9.2 |
+| 19 | **Matrix Leistung × CI-Klasse** (Kap. 8.8) | service_ids an CI-Klasse, Bereich „Verfügbare Leistungen" im Formular | v0.9.2 |
 
-## ⏳ Offen (v0.9 / v0.9.1)
+## ⏳ Offen (v0.9 / v0.9.1 / v0.9.2)
 
 | # | Thema | Quelle |
 |---|-------|--------|
-| 1 | **NetBox Device Roles** – Modell netbox.device_role, Upsert beim Sync | Kap. 8.5 |
-| 2 | **Mapping** – netbox.role_ci_class_map, Zuordnung Role → CI-Klasse | Kap. 8.6 |
-| 3 | **CI-Feldanpassung** – netbox_role_id (Many2one), netbox_role_name entfällt | Kap. 8.1 |
-| 4 | **Planpositionen** am Vertrag | Kap. 2.2, 4.2, 11 |
-| 5 | **Plan/Ist-Vergleich** mit Hinweis bei Abweichung (Aktivität/Chatter) | Kap. 4.9 |
-| 6 | **Portal** – CI-Klasse primär, Device Role als Detail | Kap. 8.7 |
-| 7 | **Config in ir.config_parameter / res.company** (aktuell: eigenes Config-Modell) | Kap. 7.2 |
+| 1 | **Planpositionen** am Vertrag | Kap. 2.2, 4.2, 11 |
+| 2 | **Plan/Ist-Vergleich** mit Hinweis bei Abweichung (Aktivität/Chatter) | Kap. 4.9 |
+| 3 | **Portal** – CI-Klasse primär, Device Role als Detail | Kap. 8.9 |
+| 4 | **Config in ir.config_parameter / res.company** (aktuell: eigenes Config-Modell) | Kap. 7.2 |

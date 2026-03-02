@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     © NETHINKS GmbH – Alle Rechte vorbehalten
-    Beschreibung: CMDB-Tab – CI-Liste statt cmdb.line (Kap. 11.1 Pflichtenheft)
+    Beschreibung: CMDB-Tab, Leistungsmatrix (Kap. 11.1, 11.2 Pflichtenheft)
 -->
 <odoo>
     <record id="view_contract_recurrent_form_cmdb_ci" model="ir.ui.view">
@@ -30,6 +30,35 @@
                             <button name="action_unassign_contract" type="object"
                                     string="Entfernen" icon="fa-times" class="btn-link"
                                     title="CI aus Vertrag entfernen"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Leistungsmatrix-Tab (Kap. 11.2) -->
+    <record id="view_contract_recurrent_form_matrix" model="ir.ui.view">
+        <field name="name">contract.recurrent.form.matrix</field>
+        <field name="model">contract.recurrent</field>
+        <field name="inherit_id" ref="intero_net.view_contract_recurrent_form"/>
+        <field name="priority">51</field>
+        <field name="arch" type="xml">
+            <xpath expr="//page[.//field[@name='configuration_item_ids']]" position="after">
+                <page string="Leistungsmatrix" name="ci_class_matrix"
+                      attrs="{'invisible': [('state', '=', 'sale')]}">
+                    <group>
+                        <button name="action_init_ci_class_matrix_lines" type="object"
+                                string="Fehlende Zeilen hinzufügen"
+                                class="btn-secondary"
+                                help="Ergänzt Zeilen für neu angelegte CI-Klassen (bei Vertragserstellung werden alle automatisch angelegt)."/>
+                    </group>
+                    <field name="ci_class_matrix_line_ids" colspan="4" nolabel="1">
+                        <tree string="Leistungsmatrix" create="false" delete="true" editable="bottom">
+                            <field name="ci_class_id"/>
+                            <field name="quantity"/>
+                            <field name="service_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"/>
                         </tree>
                     </field>
                 </page>
