@@ -13,6 +13,7 @@ class CIClass(models.Model):
     """CI-Klasse – fachliche Steuergröße für Abrechnung, SLA, Plan/Ist."""
 
     _name = "nt_serviceman.ci_class"
+    _inherit = ["mail.thread", "mail.activity.mixin"]
     _description = "CI-Klasse"
     _order = "code"
 
@@ -40,6 +41,7 @@ class CIClass(models.Model):
         "service_id",
         string="Verfügbare Leistungen",
         help="Leistungen, die für diese Geräteklasse möglich sind (Kap. 8.8).",
+        domain=[("active", "=", True)],
     )
 
     def action_open_form(self):

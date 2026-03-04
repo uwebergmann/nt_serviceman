@@ -12,8 +12,8 @@
                 <group>
                     <field name="contract_id"/>
                 </group>
-                <group string="Unzugeordnete CI auswählen">
-                    <field name="configuration_item_ids" nolabel="1" widget="many2many_tags"
+                <group string="Unzugeordnete CI auswählen" col="1">
+                    <field name="configuration_item_ids" nolabel="1"
                            options="{'no_create': True}"/>
                 </group>
                 <footer>

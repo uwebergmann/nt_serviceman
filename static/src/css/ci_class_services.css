@@ -1,3 +1,10 @@
+/* Buchbare Leistungen (Produkt-Matrix-Formular): Checkboxen untereinander */
+.o_ci_service_checkboxes_vertical [aria-atomic="true"] {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem 0;
+}
+
 /* Verfügbare Leistungen: Checkboxen in 2-Spalten-Grid */
 .o_ci_service_checkboxes [aria-atomic="true"] {
     display: grid;
@@ -9,4 +16,14 @@
     .o_ci_service_checkboxes [aria-atomic="true"] {
         grid-template-columns: repeat(3, 1fr);
     }
+}
+
+/* Debug JSON-Feld: max. 10 Zeilen, Scrollbalken */
+.o_form_sheet .o_netbox_raw_json textarea,
+.o_netbox_raw_json textarea {
+    max-height: 12em !important;
+    min-height: 12em !important;
+    height: 12em !important;
+    overflow-y: auto !important;
+    resize: none !important;
 }

@@ -4,24 +4,71 @@
     Beschreibung: Views für Leistungen (Kap. 8.7 Pflichtenheft)
 -->
 <odoo>
+    <record id="view_service_search" model="ir.ui.view">
+        <field name="name">nt_serviceman.service.search</field>
+        <field name="model">nt_serviceman.service</field>
+        <field name="arch" type="xml">
+            <search string="Leistungen">
+                <field name="code"/>
+                <field name="name"/>
+                <filter name="filter_archived" string="Archivierte einblenden"
+                        domain="[]" context="{'active_test': False}"/>
+            </search>
+        </field>
+    </record>
+
     <record id="view_service_tree" model="ir.ui.view">
         <field name="name">nt_serviceman.service.tree</field>
         <field name="model">nt_serviceman.service</field>
         <field name="arch" type="xml">
-            <tree string="Leistungen" decoration-muted="not active" editable="bottom">
+            <tree string="Leistungen" decoration-muted="not active" editable="bottom"
+                  delete="false">
                 <field name="sequence" widget="handle"/>
                 <field name="code"/>
                 <field name="name"/>
                 <field name="description"/>
                 <field name="active"/>
+                <button name="action_open_form" type="object" icon="fa-arrow-right"
+                        title="Formular öffnen" string="→ Formular" class="btn btn-link"/>
             </tree>
+        </field>
+    </record>
+
+    <record id="view_service_form" model="ir.ui.view">
+        <field name="name">nt_serviceman.service.form</field>
+        <field name="model">nt_serviceman.service</field>
+        <field name="arch" type="xml">
+            <form string="Leistung">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group string="Beschreibung" col="1">
+                        <field name="description" nolabel="1" placeholder="Ausführliche Beschreibung der Leistung."/>
+                    </group>
+                    <group string="Verfügbar für CI-Klassen" col="1">
+                        <field name="ci_class_ids" nolabel="1"
+                               options="{'no_create': True}"/>
+                    </group>
+                </sheet>
+                <field name="message_follower_ids" invisible="1"/>
+                <field name="activity_ids" invisible="1"/>
+                <field name="message_ids" invisible="1"/>
+                <div class="oe_chatter"/>
+            </form>
         </field>
     </record>
 
     <record id="action_service" model="ir.actions.act_window">
         <field name="name">Leistungen</field>
         <field name="res_model">nt_serviceman.service</field>
-        <field name="view_mode">tree</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_service_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Leistungen definieren die Dienstleistungen, die NETHINKS grundsätzlich erbringen kann.

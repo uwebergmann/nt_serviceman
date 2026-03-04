@@ -46,7 +46,7 @@
         <field name="arch" type="xml">
             <xpath expr="//page[.//field[@name='configuration_item_ids']]" position="after">
                 <page string="Leistungsmatrix" name="ci_class_matrix"
-                      attrs="{'invisible': [('state', '=', 'sale')]}">
+                      attrs="{'invisible': [('state', 'in', ['active', 'cancel', 'done', 'discard'])]}">
                     <group>
                         <button name="action_init_ci_class_matrix_lines" type="object"
                                 string="Fehlende Zeilen hinzufügen"

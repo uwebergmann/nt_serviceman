@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Beschreibung: Produktformular – Tab Leistungsmatrix (Kap. 8.10 Pflichtenheft)
+-->
+<odoo>
+    <!-- Formular für eine Matrix-Zeile (CI-Klasse): Klick auf Zeile → übersichtliche Bearbeitung -->
+    <record id="view_product_ci_class_matrix_line_form" model="ir.ui.view">
+        <field name="name">nt_serviceman.product_ci_class_matrix_line.form</field>
+        <field name="model">nt_serviceman.product_ci_class_matrix_line</field>
+        <field name="arch" type="xml">
+            <form string="Leistungsmatrix – CI-Klasse">
+                <sheet>
+                    <group col="1">
+                        <field name="product_tmpl_id" invisible="1"/>
+                        <field name="ci_class_id"/>
+                        <field name="quantity" placeholder="0"/>
+                        <div class="text-muted mb-2">
+                            Wählen Sie die Leistungen, die für diese CI-Klasse gebucht werden können.
+                            Nur Leistungen, die für diese Klasse verfügbar sind (Konfiguration: CI-Klasse).
+                        </div>
+                        <field name="available_service_ids" invisible="1"/>
+                        <field name="service_ids" nolabel="1"
+                               widget="many2many_checkboxes"
+                               domain="[('id', 'in', available_service_ids)]"
+                               options="{'no_create': True}"
+                               class="o_ci_service_checkboxes_vertical"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_product_template_form_matrix" model="ir.ui.view">
+        <field name="name">product.template.form.matrix.nt_serviceman</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="intero_net.product_template_form_view"/>
+        <field name="priority">60</field>
+        <field name="arch" type="xml">
+            <xpath expr="//page[.//group[@name='main_consumption']]" position="after">
+                <page string="Leistungsmatrix" name="ci_class_matrix"
+                      attrs="{'invisible': [('detailed_type', '!=', 'recurrent')]}">
+                    <group>
+                        <button name="action_init_ci_class_matrix_lines" type="object"
+                                string="Fehlende Zeilen hinzufügen"
+                                class="btn-secondary"
+                                help="Ergänzt Zeilen für alle CI-Klassen, die noch nicht in der Matrix sind."/>
+                        <div class="text-muted">
+                            Matrix für CI-Klassen und buchbare Leistungen.
+                            Wird beim Hinzufügen des Produkts in ein Angebot in den Vertrag übernommen.
+                        </div>
+                    </group>
+                    <field name="ci_class_matrix_line_ids" colspan="4" nolabel="1">
+                        <tree string="Leistungsmatrix" create="true" delete="true" editable="false">
+                            <field name="ci_class_id"/>
+                            <field name="quantity"/>
+                            <field name="service_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                            <button name="action_open_form" type="object" icon="fa-pencil"
+                                    title="Bearbeiten" string="Bearbeiten" class="btn btn-link"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

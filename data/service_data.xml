@@ -5,53 +5,58 @@
 -->
 <odoo>
     <data noupdate="0">
-        <record id="service_dokumentation" model="nt_serviceman.service">
-            <field name="code">Dokumentation</field>
-            <field name="name">Dokumentation</field>
-            <field name="description">Managementeinheit in Doku erfasst</field>
+        <record id="service_monitoring" model="nt_serviceman.service">
+            <field name="code">Monitoring</field>
+            <field name="name">Monitoring</field>
+            <field name="description">Wir überwachen Ihr System automatisiert auf technische Auffälligkeiten.
+
+Wird eine Abweichung erkannt, wird automatisch ein Service-Ticket erstellt und Sie werden informiert. Nach Ihrer Bestätigung beginnt die im Vertrag vereinbarte Reaktions- bzw. Wiederherstellungszeit.
+
+Sobald das System wieder im Normalzustand ist, wird das Ticket entsprechend geschlossen.
+
+Der Umfang der Überwachung (z. B. 24/7 oder zu definierten Servicezeiten) richtet sich nach dem vereinbarten SLA.</field>
             <field name="sequence">10</field>
             <field name="active">True</field>
         </record>
-        <record id="service_beratung" model="nt_serviceman.service">
-            <field name="code">Konfigurations-Service</field>
-            <field name="name">Konfigurations-Service</field>
-            <field name="description">Unterstützung bei Konfiguration und Betrieb der Managementeinheit</field>
-            <field name="sequence">20</field>
-            <field name="active">True</field>
-        </record>
-        <record id="service_information" model="nt_serviceman.service">
+        <record id="service_cve" model="nt_serviceman.service">
             <field name="code">Proaktiver Sicherheits-Service (CVE)</field>
             <field name="name">Proaktiver Sicherheits-Service (CVE)</field>
-            <field name="description">E-Mail zu CVE/Sicherheitslücken + Maßnahmen</field>
-            <field name="sequence">30</field>
+            <field name="description">Wir prüfen Ihr System regelmäßig auf bekannte Sicherheitslücken (CVE) anhand öffentlich verfügbarer Sicherheitsinformationen.
+
+Relevante Treffer werden durch uns bewertet, priorisiert und als Service-Ticket dokumentiert. Sie erhalten eine verständliche Einschätzung der Bedeutung sowie eine Handlungsempfehlung.
+
+Die Entscheidung über die Umsetzung (z. B. Patch oder Update) erfolgt in Abstimmung mit Ihnen und wird separat als Change oder Service durchgeführt.
+
+Auf Wunsch erhalten Sie eine regelmäßige Übersicht der geprüften und relevanten Sicherheitsmeldungen.</field>
+            <field name="sequence">20</field>
             <field name="active">True</field>
         </record>
         <record id="service_update" model="nt_serviceman.service">
             <field name="code">Update-Service</field>
-            <field name="name">Update-Service</field>
-            <field name="description">Service-Updates gemäß Basisvertrag</field>
+            <field name="name">Update-Service (Firmware &amp; Software)</field>
+            <field name="description">Wir überwachen herstellerseitige Firmware- und Software-Updates für Ihr System und prüfen deren Relevanz sowie Dringlichkeit.
+
+Bei verfügbaren Updates informieren wir Sie proaktiv und stimmen ein geeignetes Wartungsfenster mit Ihnen ab. Die Durchführung erfolgt geplant und dokumentiert.
+
+Notwendige Updates werden in Abstimmung mit Ihnen als Change umgesetzt.
+
+Alle durchgeführten Aktualisierungen werden im Service-System nachvollziehbar dokumentiert.</field>
+            <field name="sequence">30</field>
+            <field name="active">True</field>
+        </record>
+        <record id="service_konfig_backup" model="nt_serviceman.service">
+            <field name="code">Konfig-Backup</field>
+            <field name="name">Konfigurations-Backup</field>
+            <field name="description">Änderungen an der Gerätekonfiguration werden automatisch erkannt.
+
+Bei jeder relevanten Anpassung wird die aktuelle Konfiguration versioniert gesichert – inklusive Zeitstempel und technischer Änderungsinformationen.
+
+Dadurch steht jederzeit mindestens ein funktionsfähiger Konfigurationsstand zur Verfügung.
+
+Dies ermöglicht eine schnelle Wiederherstellung im Störungsfall und unterstützt ein transparentes Co-Management zwischen Ihnen und NETHINKS.
+
+Alle Versionen sind nachvollziehbar dokumentiert.</field>
             <field name="sequence">40</field>
-            <field name="active">True</field>
-        </record>
-        <record id="service_backup" model="nt_serviceman.service">
-            <field name="code">Backup-Service</field>
-            <field name="name">Backup-Service</field>
-            <field name="description">Regelmäßige Konfig-Speicherung, Wiederherstellung auf Anfrage</field>
-            <field name="sequence">50</field>
-            <field name="active">True</field>
-        </record>
-        <record id="service_2nd_level_support" model="nt_serviceman.service">
-            <field name="code">2nd-Level-Support</field>
-            <field name="name">2nd Level Support</field>
-            <field name="description">Eskalation an Gerätehersteller/Drittanbieter</field>
-            <field name="sequence">60</field>
-            <field name="active">True</field>
-        </record>
-        <record id="service_2nd_level_management" model="nt_serviceman.service">
-            <field name="code">2nd-Level-Management</field>
-            <field name="name">2nd Level Management</field>
-            <field name="description">Zusätzliche Supportleistung bei Bedarf (vgl. 2nd Level Support)</field>
-            <field name="sequence">70</field>
             <field name="active">True</field>
         </record>
     </data>

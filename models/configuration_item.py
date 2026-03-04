@@ -20,6 +20,7 @@ class ConfigurationItem(models.Model):
     """Configuration Item – technisches Gerät aus NetBox."""
 
     _name = "nt_serviceman.configuration_item"
+    _inherit = ["mail.thread", "mail.activity.mixin"]
     _description = "Configuration Item (CI)"
     _sql_constraints = [
         (
@@ -118,6 +119,42 @@ class ConfigurationItem(models.Model):
         ondelete="set null",
         help="Wiederkehrender Vertrag, dem dieses CI zugeordnet ist.",
     )
+    contract_service_ids = fields.Many2many(
+        "nt_serviceman.service",
+        "nt_serviceman_ci_contract_service_rel",
+        "configuration_item_id",
+        "service_id",
+        string="Buchbare Leistungen",
+        help="Kopie aus der Vertrags-Leistungsmatrix (Kap. 11.3); ermöglicht Filter, Sortierung und Gruppierung.",
+    )
+
+    def _sync_contract_service_ids(self):
+        """Kopiert buchbare Leistungen aus der Vertrags-Leistungsmatrix ins CI (Kap. 11.3)."""
+        for rec in self:
+            if not rec.contract_id:
+                rec.contract_service_ids = False
+                continue
+            if not rec.ci_class_id:
+                rec.contract_service_ids = False
+                continue
+            line = rec.contract_id.ci_class_matrix_line_ids.filtered(
+                lambda l: l.ci_class_id == rec.ci_class_id
+            )[:1]
+            rec.contract_service_ids = line.service_ids if line else False
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        to_sync = records.filtered(lambda r: r.contract_id)
+        if to_sync:
+            to_sync._sync_contract_service_ids()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        if "contract_id" in vals:
+            self._sync_contract_service_ids()
+        return res
 
     def _netbox_device_exists(self, netbox_id):
         """Prüft, ob ein Device mit der NetBox-ID in NetBox existiert."""
