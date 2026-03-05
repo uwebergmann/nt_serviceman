@@ -1,0 +1,34 @@
+---
+description: NT:ServiceMan – Deploy und Update auf Odoo-Staging
+globs: "**"
+alwaysApply: false
+---
+
+# NT:ServiceMan – Deployment
+
+## Umgebung
+
+- **Entwicklung:** Lokaler Mac (Cursor, Quellcode)
+- **Staging/Ziel:** `odoo16.nethinks-intern.com`
+- **Pfad Ziel:** `/root/service/custom_modules/`
+- **Datenbank:** `20250327`
+
+## Deploy (Dateien kopieren)
+
+**Vom nt_serviceman-Verzeichnis aus:**
+```bash
+scp -r . root@odoo16.nethinks-intern.com:/root/service/custom_modules/nt_serviceman
+```
+
+**Vom übergeordneten Verzeichnis (wenn nt_serviceman, nt_riskman etc. nebeneinander):**
+```bash
+scp -r nt_serviceman root@odoo16.nethinks-intern.com:/root/service/custom_modules/
+```
+
+## Modul-Update (Odoo, auf dem Staging-Server)
+
+```bash
+docker-compose exec -T odoo odoo -d 20250327 --no-http --stop-after-init -u nt_serviceman
+```
+
+Typischer Ablauf: 1) Deploy, 2) Update ausführen.

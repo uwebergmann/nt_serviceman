@@ -1,0 +1,17 @@
+---
+description: NT:ServiceMan – Prozess für Wünsche, Anforderungen und Fragen
+alwaysApply: true
+---
+
+# Anforderungsprozess NT:ServiceMan
+
+**Gilt für:** Fachliche Anforderungen an das Modul (Features, Änderungen, technische Spezifikation).
+
+**Ausgenommen:** Meta-Anfragen (Regeln, Deployment, Werkzeuge, Projekt-Setup) landen nicht im Pflichtenheft – dafür entfällt der Prozess.
+
+1. **Verständnis zeigen** – Zuerst zusammenfassen, was du verstanden hast.
+2. **Pflichtenheft-Frage** – Dann fragen: „Sollen wir das ins Pflichtenheft.md einarbeiten?“
+3. **Nach positiver Antwort** – Pflichtenheft um die neuen Anforderungen beschreiben/erweitern.
+4. **Umsetzung** – Erst nach expliziter Freigabe durch den Nutzer („Umsetzung frei“) mit der Implementierung beginnen.
+
+**Wichtig:** Der Nutzer kann jederzeit neue Wünsche äußern. Dann einen oder mehrere Schritte zurückgehen (z. B. Verständnis erneut prüfen, Pflichtenheft erneut anpassen, bevor Umsetzung startet).

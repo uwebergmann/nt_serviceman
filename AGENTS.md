@@ -87,7 +87,7 @@ nt_serviceman/
 |-------|-------|
 | `docs/Pflichtenheft.md` | Pflichtenheft – Quelle der Wahrheit |
 | `__manifest__.py` | Abhängigkeiten, Version |
-| `.cursor/rules/` (Workspace-Root) | Regeln (Prozess, Deployment, Markdown→Wiki) |
+| `.cursor/rules/` (im Modul) | Regeln (Prozess, Deployment, Markdown→Wiki) |
 
 ---
 

@@ -1,0 +1,34 @@
+---
+description: Markdown → DokuWiki: Pflichtenheft und generische .md → .wiki Konvertierung
+globs: "**/*.md", "**/*.wiki", "**/docs/**"
+alwaysApply: false
+---
+
+# Markdown → DokuWiki Konvertierung
+
+## Regeln
+
+- **Nur die Markdown-Quelle bearbeiten** (z. B. `docs/Pflichtenheft.md`). `.wiki`-Dateien werden generiert und nicht direkt editiert.
+- Nach Änderungen an einer `.md`-Datei die entsprechende `.wiki`-Datei neu erzeugen.
+
+## Konvertierungsbefehl
+
+**Pflichtenheft speziell** (vom Modul-Root aus):
+```bash
+cd docs && sed 's/^---$/----/' Pflichtenheft.md | pandoc -t dokuwiki -o Pflichtenheft.wiki
+```
+
+**Generisch (beliebige Markdown-Datei):**
+```bash
+sed 's/^---$/----/' EINGABE.md | pandoc -t dokuwiki -o AUSGABE.wiki
+```
+
+Beispiel:
+```bash
+sed 's/^---$/----/' README.md | pandoc -t dokuwiki -o README.wiki
+```
+
+## Hintergrund
+
+- `sed 's/^---$/----/'` ersetzt horizontale Trennlinien (`---`), damit pandoc sie nicht als YAML-Frontmatter-Begrenzer interpretiert.
+- DokuWiki nutzt `----` für horizontale Linien.
