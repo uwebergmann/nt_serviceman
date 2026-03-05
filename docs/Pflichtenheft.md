@@ -849,6 +849,29 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 |---|-------|--------|
 | 1 | **Plan/Ist-Benachrichtigung** (optional) | Aktivität/Chatter bei Abweichung – bewusst nicht umgesetzt | Kap. 4.9 |
 | 2 | **Portal** – CI-Klasse primär, Device Role als Detail | Kap. 8.9 |
+| 3 | **Chatter** funktioniert nicht richtig (Bug) | – |
+| 4 | **Tenant → Partner** umbenennen; Verknüpfung über Kundennummer Odoo–NetBox | Kap. 8.1 |
+| 5 | **Service-Voraussetzungen aus NetBox** (z. B. OpenCVE) – pro Leistung erforderliche NetBox-Felder; Indikator OK/Rot; Techniker-Hinweise | geplant |
+| 6 | **NetBox: Initial-Import** – alle CI aus NetBox holen und in Odoo anlegen | geplant |
+| 7 | **NetBox: Update bei Änderungen** – Mechanismus (Webhook/Cron), der bei NetBox-Änderungen Odoo aktualisiert | geplant |
+| 8 | **Filter und Gruppierungen** – erweiterte Nutzerunterstützung in Listen (CI, Verträge, Services) | geplant |
+
+### Status NetBox & Services (Überblick)
+
+**Bereits vorhanden:**
+- NetBox-Schnittstelle: manueller Abruf pro CI (Button „Hole von NetBox“)
+- REST-API-Anbindung, Felderübernahme (Name, Rolle, Tenant, Serial, Hardware-Typ, …)
+- CI-Anlage mit NetBox-ID; Device-Role-Mapping → CI-Klasse
+
+**Geplant (ToDo):**
+
+| Bereich | Thema | Kurzbeschreibung |
+|---------|-------|------------------|
+| NetBox | **Initial-Import** | Alle Devices aus NetBox abrufen und als CI in Odoo anlegen (Bulk-Import) |
+| NetBox | **Update bei Änderungen** | Mechanismus, der bei Änderungen in NetBox ein Update in Odoo auslöst (Webhook, periodischer Abgleich o. Ä.) |
+| NetBox/CI | **CI–Kunde / Partner** | Zuordnung CI zu Kunde prüfen (in NetBox vorhanden?); evtl. Odoo-Kundennummer in NetBox gepflegt → Verknüpfung herstellen (vgl. Tenant → Partner) |
+| Services | **Service-Voraussetzungen** | Pro Leistung: benutzergepflegte Feldliste (NetBox-Felder, die gefüllt sein müssen). Feld leer → Service nicht möglich. Basis für Automatisierung (z. B. OpenCVE). |
+| UX | **Filter und Gruppierungen** | Erweiterte Filter und Gruppierungen in Listen, damit Nutzer gut unterstützt werden |
 
 ### Offene Punkte – Detail (einzelnd umsetzbar, Reihenfolge nach Aufwand)
 
@@ -856,6 +879,12 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 |---|-------|---------|------------------|
 | 1 | **Plan/Ist-Benachrichtigung** (optional) | 1–2 h | Activity/Chatter bei Abweichung – optional, Sichtbarkeit bereits umgesetzt. |
 | 2 | **Portal** | ungewiss | CI-Klasse primär, Device Role als Detail. intero_net_portal zeigt aktuell keine CIs; Aufwand abhängig davon, ob nur View-Anpassung oder neues Portal-Feature nötig (4 h bis 2 Tage). |
+| 3 | **Chatter-Bug** | ungewiss | Chatter funktioniert mindestens bei CI nicht; vermutlich auch bei Vertrag und anderen Modellen – Analyse erforderlich. |
+| 4 | **Tenant → Partner** | 4–8 h | Feld „Tenant" in „Partner" umbenennen (Odoo-Schreibweise). NetBox prüfen, ob Kundennummer aus Odoo vorhanden ist; Verknüpfung CI–Partner darüber herstellen. |
+| 5 | **Service-Voraussetzungen (NetBox-Felder)** | mittel–hoch | Pro Leistung: benutzergepflegte Feldliste (NetBox-Felder, die gefüllt sein müssen). Feld leer → Service nicht möglich. Indikator OK/Rot; Techniker-Hinweise. Basis für Automatisierung (z. B. OpenCVE). |
+| 6 | **NetBox Initial-Import** | 1–2 Tage | Alle Devices aus NetBox (z. B. /api/dcim/devices/) abrufen und als CI in Odoo anlegen. Button oder Aktion in Konfiguration. |
+| 7 | **NetBox Update bei Änderungen** | 2–5 Tage | Mechanismus: Webhook (NetBox → Odoo) oder periodischer Abgleich (Cron). Bei Änderung in NetBox → Update des betroffenen CI in Odoo. |
+| 8 | **Filter und Gruppierungen** | 4–8 h | Erweiterte Filter und Gruppierungen in CI-, Vertrags- und Service-Listen für bessere Nutzerunterstützung. |
 
 ### Lösungsvorschlag: CI-Zuordnung nur für Matrix-CI-Klassen (umgesetzt v0.9.11)
 
