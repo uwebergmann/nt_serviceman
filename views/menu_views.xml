@@ -14,13 +14,7 @@
               sequence="15"
               groups="nt_serviceman.group_nt_serviceman_admin,nt_serviceman.group_nt_serviceman_user"/>
 
-    <!-- Untermenü Daten -->
-    <menuitem id="menu_nt_serviceman_data"
-              name="Daten"
-              parent="menu_nt_serviceman_root"
-              sequence="10"/>
-
-    <!-- Konfiguration (nur Admin) -->
+    <!-- Konfiguration (nur Admin): Einstellungen, Leistungen, CI-Klassen, Device Roles -->
     <menuitem id="menu_nt_serviceman_config"
               name="Konfiguration"
               parent="menu_nt_serviceman_root"

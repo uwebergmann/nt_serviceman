@@ -35,11 +35,11 @@
                             <field name="description" placeholder="Optionale Beschreibung"/>
                         </group>
                     </group>
-                    <group string="Verfügbare Leistungen" col="2">
-                        <field name="service_ids" string="Verfügbare Leistungen" nolabel="1" colspan="2"
+                    <group string="Verfügbare Leistungen" col="1">
+                        <field name="service_ids" string="Verfügbare Leistungen" nolabel="1"
                                widget="many2many_checkboxes"
                                options="{'no_create': True}"
-                               class="o_ci_service_checkboxes"/>
+                               class="o_ci_service_checkboxes_vertical"/>
                     </group>
                     <group string="Device Roles">
                         <div class="mt8">
@@ -80,8 +80,8 @@
 
     <menuitem id="menu_ci_class"
               name="CI-Klassen"
-              parent="menu_nt_serviceman_data"
+              parent="menu_nt_serviceman_config"
               action="action_ci_class"
               sequence="5"
-              groups="nt_serviceman.group_nt_serviceman_admin,nt_serviceman.group_nt_serviceman_user"/>
+              groups="nt_serviceman.group_nt_serviceman_admin"/>
 </odoo>

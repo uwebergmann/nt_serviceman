@@ -20,6 +20,49 @@ class ContractRecurrent(models.Model):
         "contract_id",
         string="Configuration Items",
     )
+    ci_class_matrix_has_archived = fields.Boolean(
+        compute="_compute_ci_class_matrix_archived_banner",
+        string="Matrix enthält archivierte",
+    )
+    vertragsabweichung = fields.Boolean(
+        compute="_compute_vertragsabweichung",
+        string="Vertragsabweichung",
+        store=True,
+        help="True, wenn in mindestens einer CI-Klasse-Zeile Plan- und Ist-Menge abweichen.",
+    )
+
+    @api.depends(
+        "ci_class_matrix_line_ids.quantity",
+        "ci_class_matrix_line_ids.actual_quantity",
+        "configuration_item_ids",
+        "configuration_item_ids.ci_class_id",
+    )
+    def _compute_vertragsabweichung(self):
+        for contract in self:
+            lines = contract.ci_class_matrix_line_ids
+            contract.vertragsabweichung = any(l.quantity_deviation != 0 for l in lines)
+    ci_class_matrix_archived_banner = fields.Html(
+        compute="_compute_ci_class_matrix_archived_banner",
+        string="Archivierte Leistungen Hinweis",
+    )
+
+    @api.depends("ci_class_matrix_line_ids.service_ids", "ci_class_matrix_line_ids.service_ids.active")
+    def _compute_ci_class_matrix_archived_banner(self):
+        for contract in self:
+            archived = contract.ci_class_matrix_line_ids.mapped("service_ids").filtered(
+                lambda s: not s.active
+            )
+            contract.ci_class_matrix_has_archived = bool(archived)
+            if archived:
+                names = ", ".join(archived.mapped("name"))
+                contract.ci_class_matrix_archived_banner = (
+                    f'<div class="alert alert-info mb-0" role="alert">'
+                    f'<strong>Diese Matrix enthält archivierte Leistung(en):</strong> {names}. '
+                    "Sie bleiben im Vertrag vereinbart, sind aber nicht mehr neu buchbar."
+                    "</div>"
+                )
+            else:
+                contract.ci_class_matrix_archived_banner = False
 
     @api.model_create_multi
     def create(self, vals_list):

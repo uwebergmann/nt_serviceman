@@ -11,9 +11,11 @@
             <form string="CI zuordnen">
                 <group>
                     <field name="contract_id"/>
+                    <field name="allowed_ci_class_ids" invisible="1"/>
                 </group>
                 <group string="Unzugeordnete CI auswählen" col="1">
                     <field name="configuration_item_ids" nolabel="1"
+                           domain="[('contract_id', '=', False), ('ci_class_id', 'in', allowed_ci_class_ids)]"
                            options="{'no_create': True}"/>
                 </group>
                 <footer>

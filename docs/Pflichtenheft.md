@@ -203,7 +203,7 @@ Diese Konfiguration ist **nicht CI-spezifisch**, sondern gilt systemweit.
 
 ### 7.0 Benutzeroberfläche (Konfiguration)
 
-Unter **NT:ServiceMan > Konfiguration** werden folgende Bereiche bereitgestellt:
+Unter **NT:ServiceMan > Konfiguration** werden folgende Bereiche bereitgestellt (alle nur für NT:ServiceMan Admin):
 
 **Einstellungen** (NetBox-Anbindung):
 
@@ -216,6 +216,12 @@ Unter **NT:ServiceMan > Konfiguration** werden folgende Bereiche bereitgestellt:
 **Leistungen** (v0.9.2): Editierbare Liste der erbringbaren Leistungen; vgl. Kap. 8.7.
 
 **Leistung pro Geräteklasse** (v0.9.2): Konfiguration, welche Leistung für welche CI-Klasse verfügbar ist; vgl. Kap. 8.8. Die Zuordnung erfolgt im CI-Klasse-Formular.
+
+**CI-Klassen** (Kap. 8.4): Geräteklassen (Firewall, Switch, Router, Access Point) konfigurieren und mit Device Roles verknüpfen.
+
+**Device Roles** (Kap. 8.5): NetBox Device Roles anzeigen; Menüpunkt „Device Roles von NetBox abrufen" zum Abruf aus NetBox.
+
+**Hinweis:** Das frühere Untermenü „Daten" wurde entfernt; CI-Klassen und Device Roles sind vollständig in die Konfiguration verschoben. Änderungen sollen nur von Administratoren (NT:ServiceMan Admin) vorgenommen werden.
 
 Zugriff auf alle Konfigurationsbereiche nur für **NT:ServiceMan Admin**.
 
@@ -233,8 +239,8 @@ Es gelten genau drei Rollen:
   Vollzugriff auf die komplette App (inkl. Konfiguration und aller Buttons/Aktionen).
 
 - **NT:ServiceMan Nutzer:**  
-  Zugriff auf operative Menüs und Formulare (z.B. CI-Einträge, Device Roles, CI-Klassen), inklusive Bedienung der Buttons in den Formularen (z.B. **„Hole von NetBox“**).  
-  **Kein Zugriff** auf das Menü **Konfiguration** und dessen Unterpunkte.
+  Zugriff auf operative Menüs und Formulare (z.B. **CI-Einträge**), inklusive Bedienung der Buttons in den Formularen (z.B. **„Hole von NetBox"** am CI).  
+  **Kein Zugriff** auf das Menü **Konfiguration** und dessen Unterpunkte (Einstellungen, Leistungen, CI-Klassen, Device Roles).
 
 - **alle anderen Benutzer:**  
   **Kein Zugriff** auf NT:ServiceMan (keine App-Kachel, keine Menüs, keine Modelle).
@@ -252,19 +258,11 @@ Die vollständige REST-URL für den Abruf eines Devices ergibt sich aus:
 
 `{netbox_base_url}/api/dcim/devices/{netbox_id}/`
 
-### 7.2 Ablageort der Konfiguration
+### 7.2 Ablageort der Konfiguration (v0.9.10 umgesetzt)
 
-Die Konfigurationsparameter werden als **Systemparameter** in Odoo gespeichert.
+Die Konfigurationsparameter (NetBox-URL, API-Token) werden als **Systemparameter** in `ir.config_parameter` gespeichert (Keys: `nt_serviceman.netbox_base_url`, `nt_serviceman.netbox_api_token`).
 
-Geeigneter technischer Ablageort ist:
-
-- `ir.config_parameter`
-
-Alternativ (bei Mehrmandantenfähigkeit):
-
-- Konfigurationsfelder auf `res.company`
-
-Die konkrete technische Entscheidung ist in der Implementierung festzulegen.
+Die Bedienoberfläche (NT:ServiceMan > Konfiguration > Einstellungen) bleibt unverändert; das Formular liest und schreibt transparent in `ir.config_parameter`.
 
 ### 7.3 Rechte- und Sicherheitskonzept
 
@@ -277,11 +275,11 @@ Die Berechtigungen sind wie folgt umzusetzen:
 
 - **NT:ServiceMan Admin**
   - Vollzugriff auf alle NT:ServiceMan-Modelle und Menüs
-  - exklusiver Zugriff auf **Konfiguration > Einstellungen**
+  - exklusiver Zugriff auf **Konfiguration** (Einstellungen, Leistungen, CI-Klassen, Device Roles)
   - darf NetBox-URL/API-Token sehen und ändern
 
 - **NT:ServiceMan Nutzer**
-  - Vollzugriff auf operative NT:ServiceMan-Funktionen (CI, CI-Klassen, Device Roles, Formularaktionen)
+  - Vollzugriff auf operative NT:ServiceMan-Funktionen (**CI-Einträge** inkl. Formularaktionen wie „Hole von NetBox")
   - kein Zugriff auf Konfigurationsmenü und keine Einsicht in NetBox-URL/API-Token
 
 - **alle anderen**
@@ -336,7 +334,7 @@ Der Chatter (Nachrichten, Aktivitäten, Änderungshistorie) wird nur für ausgew
 | ci_class_id | Many2one | Mapping | CI-Klasse (via Role-Mapping, v0.9.1) | v0.9.1 |
 | cmdb_id | Integer | manuell | Legacy CMDB-ID (Abwärtskompatibilität); optional | v0.9.1 |
 | contract_id | Many2one | Zuordnung | Vertrag (contract.recurrent); CI gehört genau einem Vertrag | v0.9.1 |
-| contract_service_ids | Many2many | Kopie | Buchbare Leistungen – Kopie aus Vertrags-Leistungsmatrix (Kap. 11.3); keine Verlinkung | v0.9.3 |
+| contract_service_ids | Many2many | Kopie | Gebuchte Leistungen – Kopie aus Vertrags-Leistungsmatrix (Kap. 11.3); keine Verlinkung | v0.9.3 |
 
 ### 8.2 Feldregeln
 
@@ -346,7 +344,7 @@ Der Chatter (Nachrichten, Aktivitäten, Änderungshistorie) wird nur für ausgew
 - **ci_class_id:** Wird aus dem Mapping Device Role → CI-Klasse abgeleitet (readonly). Existiert ein Mapping für die NetBox-Device-Role des Geräts, wird die CI-Klasse angezeigt; sonst bleibt das Feld leer.
 - **cmdb_id:** Optional, editierbar; erhält das bisherige CMDB-ID-Feld für Abwärtskompatibilität.
 - **contract_id:** Editierbar; Zuordnung zum wiederkehrenden Vertrag. Ein CI gehört höchstens einem Vertrag.
-- **contract_service_ids:** Kopie der buchbaren Leistungen aus der Vertrags-Leistungsmatrix; wird automatisch befüllt bei Vertragszuordnung (Kap. 11.3). Keine Relation – ermöglicht Filter, Sortierung und Gruppierung am CI.
+- **contract_service_ids:** Kopie der gebuchten Leistungen aus der Vertrags-Leistungsmatrix; wird automatisch befüllt bei Vertragszuordnung (Kap. 11.3). Keine Relation – ermöglicht Filter, Sortierung und Gruppierung am CI.
 - Service-Felder sind in v0.9 nicht Bestandteil
 - **v0.9.1:** Anzeige der Rolle ausschließlich über Relation `netbox_role_id`; der Rollenname kommt aus `netbox_device_role.name` (Mapping Role-ID → Role-Name). Das bisherige Textfeld `netbox_role_name` entfällt.
 
@@ -669,8 +667,10 @@ Der bestehende **CMDB-Tab** am Vertragsformular (`contract.recurrent`) wird wied
 | NetBox-Link | Klickbarer Link zum Gerät in NetBox |
 
 **Zuordnungswege (beide möglich):**
-1. **Im Vertrag:** Button „Zeile hinzufügen“ im CMDB-Tab → Auswahldialog für CI; Standard-Filter „nur unzugeordnete CI“.
+1. **Im Vertrag:** Button „CI zuordnen“ im CMDB-Tab → Wizard zum Auswählen unzugeordneter CI; nach „Zuordnen“ schließt der Dialog automatisch.
 2. **Im CI:** Feld „Vertrag“ (contract_id) setzen.
+
+**Einschränkung CI-Zuordnung (v0.9.11):** Es dürfen nur CI zugeordnet werden, deren **CI-Klasse in der Leistungsmatrix** des Vertrags enthalten ist (Kap. 11.2). CI mit unbekannter oder nicht vorkommender CI-Klasse werden bei der Zuordnung ausgeschlossen. Gilt für Wizard „CI zuordnen“ und für direkte Zuordnung im CI-Formular.
 
 **Hinweis zu bestehenden cmdb.line-Daten:** Die bisherige cmdb.line-Tabelle wird im Tab durch die CI-Liste ersetzt. Bestehende cmdb.line-Einträge bleiben in der Datenbank erhalten; eine spätere Migration in CI (inkl. cmdb_id) kann separat geplant werden.
 
@@ -713,11 +713,11 @@ Im Vertragsformular wird eine **Matrix** eingeführt, die pro Vertrag festlegt (
 - Checkboxen und Mengen direkt editierbar
 - Nur sichtbar, wenn Vertrag nicht im Status „Verkauf" (analog CMDB-Tab)
 
-### 11.3 Buchbare Leistungen am CI (Kopie) – v0.9.3
+### 11.3 Gebuchte Leistungen am CI (Kopie) – v0.9.3 / v0.9.11
 
-**Kontext:** Die Verkettung Vertrag → Leistungsmatrix (CI-Klasse + buchbare Leistungen) → CI (mit CI-Klasse) bedeutet: Zu jedem CI, das einem Vertrag zugeordnet ist, gehört die Menge der für seine CI-Klasse im Vertrag buchbaren Leistungen.
+**Kontext:** Die Verkettung Vertrag → Leistungsmatrix (CI-Klasse + gebuchte Leistungen) → CI (mit CI-Klasse) bedeutet: Zu jedem CI, das einem Vertrag zugeordnet ist, gehören die **gebuchten Leistungen** – die für seine CI-Klasse im Vertrag vereinbarten Leistungen.
 
-**Anforderung:** Sobald ein CI einem Vertrag zugeordnet wird (`contract_id` gesetzt), werden die **buchbaren Leistungen** aus der Vertrags-Leistungsmatrix auf das CI übernommen – als **Kopie**, nicht als Verlinkung.
+**Anforderung:** Sobald ein CI einem Vertrag zugeordnet wird (`contract_id` gesetzt), werden die gebuchten Leistungen aus der Vertrags-Leistungsmatrix auf das CI übernommen – als **Kopie**, nicht als Verlinkung.
 
 **Zweck:** Eine Kopie am CI ermöglicht Filter, Sortierung und Gruppierung in Listen und Berichten direkt am CI. Eine Verlinkung würde diese Nutzung erschweren. Der Nachteil: Änderungen an der Leistungsmatrix des Vertrags werden nicht automatisch ans CI weitergereicht; ein Update erfordert ggf. manuelle Nachpflege oder einen Aktualisierungs-Button (spätere Erweiterung).
 
@@ -725,14 +725,13 @@ Im Vertragsformular wird eine **Matrix** eingeführt, die pro Vertrag festlegt (
 
 - Modell `nt_serviceman.configuration_item`: Feld `contract_service_ids` (Many2many → `nt_serviceman.service`, eigene Relation)
 - **Trigger:** Beim Setzen oder Ändern von `contract_id` (einschl. Zuordnung über Wizard „CI zuordnen") wird die passende Zeile der Leistungsmatrix des Vertrags ermittelt (über `ci_class_id` des CI) und deren `service_ids` in `contract_service_ids` am CI kopiert
-- **Kein Vertrag:** Ist `contract_id` leer, bleibt `contract_service_ids` leer
+- **Kein Vertrag:** Ist `contract_id` leer, bleibt `contract_service_ids` leer; der Bereich „Gebuchte Leistungen" wird nicht angezeigt
 - **Keine passende Matrix-Zeile:** Existiert für die CI-Klasse des CI keine Zeile in der Vertrags-Leistungsmatrix, bleibt `contract_service_ids` leer
 
-**Regeln:**
+**Darstellung im CI-Formular (v0.9.11):**
 
-- Die Kopie erfolgt ausschließlich bei Vertragszuordnung (oder -änderung); spätere Änderungen an der Leistungsmatrix ändern bestehende CI nicht
-- `contract_service_ids` ist im Formular sichtbar (readonly oder editierbar – Implementierung entscheidet); für Filter/Sortierung/Gruppierung ist editierbar sinnvoll, damit manuell korrigiert werden kann
-- Es handelt sich um eine reine Datenspiegelung – keine Constraints, die verhindern, dass `contract_service_ids` manuell von der Matrix abweicht
+- Bereich **„Gebuchte Leistungen"** nur sichtbar, wenn ein Vertrag zugeordnet ist
+- Anzeige als **read-only Punkt-Liste** (nur Bezeichnungen, ohne Beschreibungen)
 
 ### 11.4 Übertragung Leistungsmatrix: Produkt → Vertrag (v0.9.4)
 
@@ -824,35 +823,59 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | 14 | **NetBox Device Roles** (Kap. 8.5) | Modell nt_serviceman.netbox_device_role; Abruf aus /api/dcim/device-roles/; Upsert-Logik mit netbox_created/netbox_last_updated; Sync-Regeln (NetBox jünger → Update) |
 | 15 | **Mapping Device Role ↔ CI-Klasse** (Kap. 8.6) | ci_class_id am netbox_device_role (Many2one); Zuordnung in Device-Roles-Liste und CI-Klasse-Formular; Wizard „Device Roles zuordnen“ |
 | 16 | **CI netbox_role_id** (Kap. 8.1) | Many2one auf netbox_device_role; netbox_role_name entfällt; ci_class_id über Relation |
-| 17 | **Device Roles von NetBox abrufen** | Menüpunkt unter Daten; Button im Config-Formular; Auto-Refresh: Liste wird nach Abruf angezeigt |
+| 17 | **Device Roles von NetBox abrufen** | Menüpunkt unter Konfiguration; Button im Config-Formular; Auto-Refresh: Liste wird nach Abruf angezeigt |
 | 18 | **Leistungen** (Kap. 8.7) | Modell service, Liste mit 7 Vorbefüllungen, Menü Konfiguration > Leistungen | v0.9.2 |
 | 19 | **Matrix Leistung × CI-Klasse** (Kap. 8.8) | service_ids an CI-Klasse, Bereich „Verfügbare Leistungen" – im Formular | v0.9.2 |
 | 20 | **Leistung ↔ CI-Klasse bidirektional** (Kap. 8.8) | ci_class_ids am service; Bereich „Verfügbar für CI-Klassen" im Leistung-Formular | v0.9.2 |
 | 21 | **Soft Delete Leistungen** (Kap. 8.7) | unlink() verhindert physisches Löschen; domain active=True in 8.8, 8.10, 11.2; Archivieren + Filter „Archivierte einblenden"; tree delete="false" | v0.9.4 |
 | 22 | **Leistungsmatrix am Produkt** (Kap. 8.10) | Modell product_ci_class_matrix_line, Feld ci_class_matrix_line_ids am product.template; Tab „Leistungsmatrix" nur bei detailed_type=recurrent; action_init_ci_class_matrix_lines | v0.9.4 |
 | 23 | **Leistungsmatrix am Vertrag** (Kap. 11.2) | Tab „Leistungsmatrix" im Vertragsformular; Sichtbarkeit auch bei state=sale (Angebotsphase) | v0.9.3 |
-| 24 | **Buchbare Leistungen am CI** (Kap. 11.3) | contract_service_ids am configuration_item; _sync_contract_service_ids bei contract_id-Änderung; Kopie aus Vertrags-Leistungsmatrix | v0.9.3 |
+| 24 | **Gebuchte Leistungen am CI** (Kap. 11.3) | contract_service_ids am configuration_item; _sync_contract_service_ids bei contract_id-Änderung; Kopie aus Vertrags-Leistungsmatrix; Anzeige als read-only Punkt-Liste | v0.9.3 / v0.9.11 |
 | 25 | **Übertragung Produkt → Vertrag** (Kap. 11.4) | _prepare_contract_values erweitert, _prepare_contract_ci_class_matrix_values; Matrix bei Vertragserstellung aus Angebotszeile übernommen; nur aktive Leistungen | v0.9.4 |
 | 26 | **Planpositionen** (Kap. 2.2, 4.2, 11) | Geräteklasse + Planmenge über Leistungsmatrix (ci_class_id + quantity); am Produkt, Vertrag und via Angebot; Zeilen = Planpositionen | v0.9.4 |
+| 27 | **Menü Konfiguration** | Untermenü „Daten" entfernt; CI-Klassen, Device Roles, „Device Roles von NetBox abrufen" komplett nach Konfiguration verschoben; nur NT:ServiceMan Admin | v0.9.9 |
+| 28 | **Config in ir.config_parameter** (Kap. 7.2) | NetBox-URL und API-Token in ir.config_parameter; Einstellungsformular unverändert; Lesestellen angepasst; keine Migration (Werte neu eingeben) | v0.9.10 |
+| 29 | **Markierung „nicht mehr angeboten"** (Kap. 8.10) | Banner + graue Tags für archivierte Leistungen in Produkt- und Vertragsmatrix; color-Feld am Service; decoration-muted auf Zeilen mit Archiv-Leistungen | v0.9.10 |
+
+| 30 | **Ist-Menge** (Plan/Ist) | actual_quantity an contract_ci_class_matrix_line; berechnet aus Anzahl CI je CI-Klasse im CMDB-Tab | v0.9.11 |
+| 31 | **CI-Zuordnung nur Matrix-CI-Klassen** (Kap. 11.1) | Nur CI zuordenbar, deren CI-Klasse in der Leistungsmatrix vorkommt; Wizard Domain + Validierung; Constraint am CI | v0.9.11 |
+| 32 | **Gebuchte Leistungen am CI – Darstellung** (Kap. 11.3) | „Buchbar"→„Gebucht"; nur bei Vertrag sichtbar; read-only Punkt-Liste mit Bezeichnungen | v0.9.11 |
+| 33 | **Archivierte Leistungen am CI** (Kap. 11.3) | contract_service_ids inkl. archivierter Leistungen; separate Liste „Nicht mehr angeboten" im CI-Formular | v0.9.11 |
+| 34 | **Plan/Ist-Mengenabweichung** (Kap. 4.9) | quantity_deviation in Leistungsmatrix; Filter „Mit Mengenabweichung" in Vertragsliste | v0.9.11 |
 
 ## ⏳ Offen (v0.9 / v0.9.1 / v0.9.2 / v0.9.4)
 
 | # | Thema | Quelle |
 |---|-------|--------|
-| 1 | **Plan/Ist-Vergleich** mit Hinweis bei Abweichung (Aktivität/Chatter) | Kap. 4.9 |
+| 1 | **Plan/Ist-Benachrichtigung** (optional) | Aktivität/Chatter bei Abweichung – bewusst nicht umgesetzt | Kap. 4.9 |
 | 2 | **Portal** – CI-Klasse primär, Device Role als Detail | Kap. 8.9 |
-| 3 | **Config in ir.config_parameter / res.company** (aktuell: eigenes Config-Modell) | Kap. 7.2 |
-| 4 | **Optional: Markierung „nicht mehr angeboten"** in Produktmatrix für archivierte Leistungen | Kap. 8.10 |
 
 ### Offene Punkte – Detail (einzelnd umsetzbar, Reihenfolge nach Aufwand)
 
-Alle vier Punkte sind unabhängig voneinander umsetzbar.
-
 | # | Thema | Aufwand | Kurzbeschreibung |
 |---|-------|---------|------------------|
-| 4 | **Markierung „nicht mehr angeboten"** | 1–2 h | In Produkt- und Vertragsmatrix archivierte Leistungen (`active=False`) kennzeichnen. Z.B. Alert/Hinweis im Matrix-Bereich oder computed Feld, wenn `service_ids` archivierte enthält. |
-| 3 | **Config in ir.config_parameter** | 2–4 h | NetBox-URL und API-Token von `nt_serviceman.config` nach `ir.config_parameter` (oder `res.company`) verschieben. 3 Lesestellen: configuration_item, netbox_device_role. UI anpassen, ggf. Migration bestehender Werte. |
-| 1 | **Plan/Ist-Vergleich** | 4–6 h | Pro Vertrag: Planmenge (Matrix) vs. Ist-Menge (Anzahl CI je Klasse). Bei Abweichung Activity oder Chatter-Nachricht. Trigger bei Änderung von Matrix oder CI-Zuordnung. |
+| 1 | **Plan/Ist-Benachrichtigung** (optional) | 1–2 h | Activity/Chatter bei Abweichung – optional, Sichtbarkeit bereits umgesetzt. |
 | 2 | **Portal** | ungewiss | CI-Klasse primär, Device Role als Detail. intero_net_portal zeigt aktuell keine CIs; Aufwand abhängig davon, ob nur View-Anpassung oder neues Portal-Feature nötig (4 h bis 2 Tage). |
 
-**Empfohlener Einstieg:** Punkt 4 (Markierung „nicht mehr angeboten") – kleinster Aufwand, isoliert, risikoarm.
+### Lösungsvorschlag: CI-Zuordnung nur für Matrix-CI-Klassen (umgesetzt v0.9.11)
+
+**Ziel:** Pro Vertrag dürfen nur CI zugeordnet werden, deren CI-Klasse in der Leistungsmatrix des Vertrags enthalten ist.
+
+**Betroffene Stellen:**
+1. **Wizard „CI zuordnen"** (`nt_serviceman.contract_configuration_item_assign`)
+2. **Direkte Zuordnung im CI-Formular** (`configuration_item.contract_id`)
+
+**Vorgehen:**
+
+| Maßnahme | Ort | Beschreibung |
+|----------|-----|--------------|
+| **1. Domain im Wizard** | `contract_configuration_item_assign.py` | Feld `configuration_item_ids`: zusätzlich `('ci_class_id', 'in', erlaubte_ci_class_ids)`. Erlaubte Klassen = `contract_id.ci_class_matrix_line_ids.mapped('ci_class_id')`. Domain dynamisch via computed Feld `allowed_ci_class_ids` oder im `domain` des Many2many. |
+| **2. Validierung im Wizard** | `action_assign()` | Vor dem `write`: Prüfen, dass alle ausgewählten CI eine `ci_class_id` haben, die in der Matrix vorkommt. Bei Verstoß `ValidationError` mit klarer Meldung (z. B. „Das CI ‚xyz‘ hat die CI-Klasse ‚Server‘, die in der Leistungsmatrix dieses Vertrags nicht vorkommt."). |
+| **3. Constraint am CI** | `configuration_item.py` | `@api.constrains('contract_id', 'ci_class_id')`: Beim Setzen von `contract_id` prüfen, dass `ci_class_id` in `contract.ci_class_matrix_line_ids.ci_class_id` enthalten ist. Falls `ci_class_id` leer (kein Mapping), Zuordnung verbieten. |
+
+**Randfälle:**
+- **Vertrag ohne Matrix-Zeilen:** Keine CI zuordenbar (korrekt).
+- **CI ohne CI-Klasse (ci_class_id leer):** Nicht zuordenbar (kein Mapping Device Role → CI-Klasse).
+- **Bestehende Zuordnungen:** Bereits zugeordnete CI mit „fremder" CI-Klasse bleiben bestehen; Constraint verhindert nur neue Zuordnungen. Optional: manuelle Bereinigung oder Migrations-Hinweis.
+
+**Empfohlener Einstieg:** Punkt 1 (Plan/Ist-Vergleich Hinweis) oder Punkt 3 (CI-Zuordnung).

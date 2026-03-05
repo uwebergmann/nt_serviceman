@@ -16,7 +16,7 @@
                 <field name="cmdb_id"/>
                 <field name="netbox_id"/>
                 <field name="contract_id"/>
-                <field name="contract_service_ids" widget="many2many_tags" optional="hide"/>
+                <field name="contract_service_ids" string="Gebuchte Leistungen" widget="many2many_tags" optional="hide"/>
                 <field name="netbox_display"/>
                 <field name="netbox_serial"/>
                 <field name="netbox_device_type"/>
@@ -62,10 +62,10 @@
                             <field name="netbox_sync_error" attrs="{'invisible': [('netbox_sync_state', '!=', 'failed')]}"/>
                         </group>
                     </group>
-                    <group string="Buchbare Leistungen" col="1" attrs="{'invisible': [('contract_id', '=', False)]}" class="mt16">
-                        <field name="contract_service_ids" nolabel="1"
-                               options="{'no_create': True}"
-                               placeholder="Werden bei Vertragszuordnung aus der Leistungsmatrix übernommen."/>
+                    <group string="Gebuchte Leistungen" col="1" attrs="{'invisible': [('contract_id', '=', False)]}" class="mt16">
+                        <field name="contract_service_ids" invisible="1"/>
+                        <field name="gebuchte_leistungen_html" nolabel="1" readonly="1"
+                               placeholder="Leistungen ergeben sich aus dem Vertrag und werden bei Zuordnung übernommen."/>
                     </group>
                     <group string="Debug (Roh-JSON)" class="mt16">
                         <div class="o_netbox_raw_json">
@@ -98,7 +98,7 @@
                         domain="[('contract_id', '=', False)]"/>
                 <group expand="0" string="Gruppieren nach">
                     <filter string="Vertrag" name="group_contract" context="{'group_by': 'contract_id'}"/>
-                    <filter string="Buchbare Leistung" name="group_service" context="{'group_by': 'contract_service_ids'}"/>
+                    <filter string="Gebuchte Leistung" name="group_service" context="{'group_by': 'contract_service_ids'}"/>
                 </group>
             </search>
         </field>

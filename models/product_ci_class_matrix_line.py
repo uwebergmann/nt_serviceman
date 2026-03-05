@@ -38,7 +38,6 @@ class ProductCIClassMatrixLine(models.Model):
         "matrix_line_id",
         "service_id",
         string="Buchbare Leistungen",
-        domain=[("active", "=", True)],
         help="Leistungen, die für diese Klasse gebucht werden können. "
              "Nur verfügbare Leistungen (laut CI-Klasse) – wird beim Speichern geprüft.",
     )
@@ -47,6 +46,21 @@ class ProductCIClassMatrixLine(models.Model):
         readonly=True,
         string="Verfügbare Leistungen",
     )
+    has_archived_services = fields.Boolean(
+        compute="_compute_has_archived_services",
+        string="Enthält archivierte",
+    )
+    archived_service_names = fields.Char(
+        compute="_compute_has_archived_services",
+        string="Archivierte Leistungen",
+    )
+
+    @api.depends("service_ids", "service_ids.active")
+    def _compute_has_archived_services(self):
+        for line in self:
+            archived = line.service_ids.filtered(lambda s: not s.active)
+            line.has_archived_services = bool(archived)
+            line.archived_service_names = ", ".join(archived.mapped("name")) if archived else ""
 
     _sql_constraints = [
         (

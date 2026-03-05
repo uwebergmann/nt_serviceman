@@ -18,7 +18,24 @@
     }
 }
 
-/* Debug JSON-Feld: max. 10 Zeilen, Scrollbalken */
+/* Archivierte Leistungen in Matrix: graue Tag-Darstellung (color=0) */
+.o_field_many2many_tags .badge-secondary,
+.o_tag_color_0 .badge {
+    opacity: 0.8;
+    background-color: #6c757d !important;
+    color: #fff !important;
+}
+
+/* Aktive Leistungen in Matrix: hellgrüne Tag-Darstellung (color=1) */
+.o_tag_color_1 .badge,
+.badge.o_tag_color_1,
+span.badge.o_tag_color_1 {
+    background-color: #28a745 !important;
+    color: #fff !important;
+    border: none;
+}
+
+/* Debug JSON-Feld: max. 10 Zeilen, Scrollbalken, Festbreitenschrift */
 .o_form_sheet .o_netbox_raw_json textarea,
 .o_netbox_raw_json textarea {
     max-height: 12em !important;
@@ -26,4 +43,6 @@
     height: 12em !important;
     overflow-y: auto !important;
     resize: none !important;
+    font-family: "Courier New", Courier, Consolas, monospace !important;
+    font-size: 0.9em !important;
 }

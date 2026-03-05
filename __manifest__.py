@@ -8,7 +8,7 @@
 
 {
     "name": "NT:ServiceMan",
-    "version": "0.9.9",
+    "version": "0.9.11",
     "author": "NETHINKS GmbH",
     "summary": "Abbildung von Configuration Items (CI) aus NetBox, Vertragszuordnung",
     "category": "Services",

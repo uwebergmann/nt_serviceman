@@ -6,7 +6,7 @@
 # Autor: $Author$
 # -----------------------------------------------------------------------------
 
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -40,6 +40,11 @@ class Service(models.Model):
         default=10,
         help="Sortierreihenfolge für die Anzeige.",
     )
+    color = fields.Integer(
+        string="Farbe",
+        compute="_compute_color",
+        help="Grau (0) wenn archiviert, für Tag-Darstellung in Matrix.",
+    )
     ci_class_ids = fields.Many2many(
         "nt_serviceman.ci_class",
         "nt_serviceman_ci_class_service_rel",
@@ -49,6 +54,12 @@ class Service(models.Model):
         help="Geräteklassen, für die diese Leistung möglich ist (Kap. 8.8).",
         domain=[("active", "=", True)],
     )
+
+    @api.depends("active")
+    def _compute_color(self):
+        """Archivierte Leistungen: grau (0). Aktive: Standard (1)."""
+        for rec in self:
+            rec.color = 0 if not rec.active else 1
 
     def unlink(self):
         """Leistungen werden nicht gelöscht, nur archiviert (Kap. 8.7 Soft Delete)."""

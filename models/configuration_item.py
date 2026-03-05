@@ -124,12 +124,71 @@ class ConfigurationItem(models.Model):
         "nt_serviceman_ci_contract_service_rel",
         "configuration_item_id",
         "service_id",
-        string="Buchbare Leistungen",
-        help="Kopie aus der Vertrags-Leistungsmatrix (Kap. 11.3); ermöglicht Filter, Sortierung und Gruppierung.",
+        string="Gebuchte Leistungen",
+        context={"active_test": False},
+        help="Kopie aus der Vertrags-Leistungsmatrix (Kap. 11.3); inkl. archivierte Leistungen.",
+    )
+    gebuchte_leistungen_html = fields.Html(
+        string="Gebuchte Leistungen (Anzeige)",
+        compute="_compute_gebuchte_leistungen_html",
+        sanitize=False,
+        help="Punkt-Liste der gebuchten Leistungen (nur Bezeichnung) zur Anzeige im Formular.",
     )
 
+    @api.depends("contract_id", "contract_service_ids", "contract_service_ids.name", "contract_service_ids.active")
+    def _compute_gebuchte_leistungen_html(self):
+        """Erzeugt read-only Punkt-Listen: aktive Leistungen und separat archivierte (nicht mehr angeboten)."""
+        for rec in self:
+            if not rec.contract_id or not rec.contract_service_ids:
+                rec.gebuchte_leistungen_html = False
+                continue
+            services = rec.contract_service_ids.sorted(key=lambda x: (x.sequence, x.name))
+            active = services.filtered(lambda s: s.active)
+            archived = services.filtered(lambda s: not s.active)
+            parts = []
+            if active:
+                items = "".join(
+                    f"<li>{markupsafe.escape(s.name or '')}</li>"
+                    for s in active
+                )
+                parts.append(f"<ul class='mb-0'>{items}</ul>")
+            if archived:
+                items = "".join(
+                    f"<li class='text-muted'>{markupsafe.escape(s.name or '')}</li>"
+                    for s in archived
+                )
+                parts.append(
+                    "<p class='text-muted small mb-1 mt-2'><strong>Nicht mehr angeboten:</strong></p>"
+                    f"<ul class='mb-0 text-muted'>{items}</ul>"
+                )
+            rec.gebuchte_leistungen_html = markupsafe.Markup("".join(parts)) if parts else False
+
+    @api.constrains("contract_id", "ci_class_id")
+    def _check_contract_ci_class_in_matrix(self):
+        """CI darf nur zugeordnet werden, wenn seine CI-Klasse in der Leistungsmatrix vorkommt."""
+        for rec in self:
+            if not rec.contract_id:
+                continue
+            if not rec.ci_class_id:
+                raise ValidationError(
+                    _(
+                        "Das CI „%s“ hat keine CI-Klasse (kein Mapping Device Role → CI-Klasse). "
+                        "Es kann keinem Vertrag zugeordnet werden."
+                    )
+                    % (rec.name or rec.netbox_display or rec.id)
+                )
+            allowed = rec.contract_id.ci_class_matrix_line_ids.mapped("ci_class_id")
+            if rec.ci_class_id not in allowed:
+                raise ValidationError(
+                    _(
+                        "Das CI „%s“ hat die CI-Klasse „%s“, "
+                        "die in der Leistungsmatrix des Vertrags nicht vorkommt."
+                    )
+                    % (rec.name or rec.netbox_display or rec.id, rec.ci_class_id.name)
+                )
+
     def _sync_contract_service_ids(self):
-        """Kopiert buchbare Leistungen aus der Vertrags-Leistungsmatrix ins CI (Kap. 11.3)."""
+        """Kopiert gebuchte Leistungen aus der Vertrags-Leistungsmatrix ins CI (Kap. 11.3)."""
         for rec in self:
             if not rec.contract_id:
                 rec.contract_service_ids = False
@@ -140,7 +199,8 @@ class ConfigurationItem(models.Model):
             line = rec.contract_id.ci_class_matrix_line_ids.filtered(
                 lambda l: l.ci_class_id == rec.ci_class_id
             )[:1]
-            rec.contract_service_ids = line.service_ids if line else False
+            services = line.with_context(active_test=False).service_ids if line else self.env["nt_serviceman.service"]
+            rec.contract_service_ids = services
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -160,13 +220,11 @@ class ConfigurationItem(models.Model):
         """Prüft, ob ein Device mit der NetBox-ID in NetBox existiert."""
         if not netbox_id or not (netbox_id := str(netbox_id).strip()):
             return True  # Leer = keine Prüfung
-        config = self.env["nt_serviceman.config"].search([], limit=1)
-        base_url = (config.netbox_base_url or "").strip().rstrip("/")
+        base_url, token = self.env["nt_serviceman.config"]._get_netbox_params()
         if not base_url:
             return True  # Keine Config = Prüfung überspringen
         url = f"{base_url}/api/dcim/devices/{netbox_id}/"
         headers = {}
-        token = (config.netbox_api_token or "").strip()
         if token:
             headers["Authorization"] = f"Token {token}"
         try:
@@ -271,9 +329,7 @@ class ConfigurationItem(models.Model):
     def action_fetch_from_netbox(self):
         """Ruft das Gerät per REST aus NetBox ab und speichert die Rohdaten."""
         self.ensure_one()
-        # Nutzer dürfen den Sync auslösen; Konfiguration wird intern mit Admin-Rechten gelesen.
-        config = self.env["nt_serviceman.config"].sudo().search([], limit=1)
-        base_url = (config.netbox_base_url or "").strip().rstrip("/")
+        base_url, token = self.env["nt_serviceman.config"].sudo()._get_netbox_params()
         nb_id = (self.netbox_id or "").strip()
 
         if not base_url:
@@ -292,7 +348,6 @@ class ConfigurationItem(models.Model):
 
         url = f"{base_url}/api/dcim/devices/{nb_id}/"
         headers = {}
-        token = (config.netbox_api_token or "").strip()
         if token:
             headers["Authorization"] = f"Token {token}"
 

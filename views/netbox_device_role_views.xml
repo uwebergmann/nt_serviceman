@@ -36,15 +36,15 @@
 
     <menuitem id="menu_fetch_device_roles_from_netbox"
               name="Device Roles von NetBox abrufen"
-              parent="menu_nt_serviceman_data"
+              parent="menu_nt_serviceman_config"
               action="action_server_fetch_device_roles"
               sequence="14"
-              groups="nt_serviceman.group_nt_serviceman_admin,nt_serviceman.group_nt_serviceman_user"/>
+              groups="nt_serviceman.group_nt_serviceman_admin"/>
 
     <menuitem id="menu_netbox_device_role"
               name="Device Roles"
-              parent="menu_nt_serviceman_data"
+              parent="menu_nt_serviceman_config"
               action="action_netbox_device_role"
               sequence="15"
-              groups="nt_serviceman.group_nt_serviceman_admin,nt_serviceman.group_nt_serviceman_user"/>
+              groups="nt_serviceman.group_nt_serviceman_admin"/>
 </odoo>

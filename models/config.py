@@ -1,33 +1,40 @@
 # -----------------------------------------------------------------------------
 # © NETHINKS GmbH – Alle Rechte vorbehalten
 # Beschreibung: Konfigurationsmodell für NT:ServiceMan (NetBox)
-# Letzte Änderung: $LastChanged$
-# Commit: $CommitId$
-# Autor: $Author$
+# Speicherort: ir.config_parameter (Kap. 7.2 Pflichtenheft)
 # -----------------------------------------------------------------------------
 
 from urllib.parse import urlparse
 
 import requests
 
-from odoo import fields, models
+from odoo import api, fields, models
+
+# Keys für ir.config_parameter
+NETBOX_BASE_URL_KEY = "nt_serviceman.netbox_base_url"
+NETBOX_API_TOKEN_KEY = "nt_serviceman.netbox_api_token"
 
 
 class NTServiceManConfig(models.Model):
-    """Globale Konfiguration für NT:ServiceMan (NetBox-Anbindung)."""
+    """Globale Konfiguration für NT:ServiceMan (NetBox-Anbindung).
+    URL und Token werden in ir.config_parameter gespeichert.
+    """
 
     _name = "nt_serviceman.config"
     _description = "NT:ServiceMan Konfiguration"
 
-    def name_get(self):
-        return [(r.id, "Einstellungen NT:ServiceMan") for r in self]
-
     netbox_base_url = fields.Char(
         string="NetBox-URL",
+        compute="_compute_netbox_params",
+        inverse="_inverse_netbox_base_url",
+        store=False,
         help="Basis-URL der NetBox-Instanz (z.B. https://netbox.example.com)",
     )
     netbox_api_token = fields.Char(
         string="NetBox API-Token",
+        compute="_compute_netbox_params",
+        inverse="_inverse_netbox_api_token",
+        store=False,
         help="API-Token für NetBox-Authentifizierung. In NetBox: My Account → API Tokens",
     )
     netbox_test_result = fields.Text(
@@ -35,6 +42,39 @@ class NTServiceManConfig(models.Model):
         readonly=True,
         help="Ergebnis des NetBox-URL-Tests.",
     )
+
+    def name_get(self):
+        return [(r.id, "Einstellungen NT:ServiceMan") for r in self]
+
+    @api.depends()
+    def _compute_netbox_params(self):
+        """Liest URL und Token aus ir.config_parameter."""
+        icp = self.env["ir.config_parameter"].sudo()
+        url = icp.get_param(NETBOX_BASE_URL_KEY, "") or ""
+        token = icp.get_param(NETBOX_API_TOKEN_KEY, "") or ""
+        for rec in self:
+            rec.netbox_base_url = url
+            rec.netbox_api_token = token
+
+    def _inverse_netbox_base_url(self):
+        """Speichert URL in ir.config_parameter."""
+        icp = self.env["ir.config_parameter"].sudo()
+        for rec in self:
+            icp.set_param(NETBOX_BASE_URL_KEY, (rec.netbox_base_url or "").strip())
+
+    def _inverse_netbox_api_token(self):
+        """Speichert Token in ir.config_parameter."""
+        icp = self.env["ir.config_parameter"].sudo()
+        for rec in self:
+            icp.set_param(NETBOX_API_TOKEN_KEY, (rec.netbox_api_token or "").strip())
+
+    @api.model
+    def _get_netbox_params(self):
+        """Liefert (base_url, token) aus ir.config_parameter. Für interne Nutzung."""
+        icp = self.env["ir.config_parameter"].sudo()
+        url = (icp.get_param(NETBOX_BASE_URL_KEY, "") or "").strip().rstrip("/")
+        token = (icp.get_param(NETBOX_API_TOKEN_KEY, "") or "").strip()
+        return url, token
 
     def _validate_netbox_url(self, url):
         """Prüft URL gegen SSRF: nur http(s), gültiger Host."""
@@ -63,7 +103,6 @@ class NTServiceManConfig(models.Model):
             self.netbox_test_result = f"❌ {err}"
             return
 
-        # verify=False für selbstsignierte Zertifikate (interne NetBox)
         kwargs = {"timeout": 10, "verify": False}
         token = (self.netbox_api_token or "").strip()
         if token:
@@ -90,7 +129,6 @@ class NTServiceManConfig(models.Model):
 
         lines.append("✅ 1. Server erreichbar.")
 
-        # Test 2 & 3: NetBox-REST-API (GET /api/)
         api_url = f"{base_url}/api/"
         try:
             r_api = requests.get(api_url, **kwargs)
@@ -108,7 +146,6 @@ class NTServiceManConfig(models.Model):
 
         lines.append("✅ 2. REST-API antwortet.")
 
-        # NetBox-typische Struktur? (JSON mit z.B. "apps" oder "routers")
         try:
             data = r_api.json()
         except ValueError:
@@ -125,7 +162,6 @@ class NTServiceManConfig(models.Model):
             )
             return
 
-        # NetBox API-Root: typisch "apps", "routers", "schema" oder "types"
         if any(k in data for k in ('apps', 'routers', 'schema', 'types')):
             lines.append("✅ 3. NetBox-API-Struktur erkannt.")
         else:
@@ -134,7 +170,6 @@ class NTServiceManConfig(models.Model):
                 "(aber JSON vorhanden)."
             )
 
-        # Test 4: API-Token prüfen
         if not token:
             lines.append("⚠️ 4. Kein API-Token konfiguriert – Device-Abfragen werden fehlschlagen.")
         elif r_api.status_code == 200:
@@ -149,6 +184,6 @@ class NTServiceManConfig(models.Model):
         self.netbox_test_result = "\n".join(lines)
 
     def action_fetch_device_roles_from_netbox(self):
-        """Ruft alle Device Roles von NetBox ab (Delegation an nt_serviceman.netbox_device_role)."""
+        """Ruft alle Device Roles von NetBox ab."""
         self.ensure_one()
         return self.env["nt_serviceman.netbox_device_role"].action_fetch_from_netbox()
