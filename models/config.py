@@ -4,15 +4,19 @@
 # Speicherort: ir.config_parameter (Kap. 7.2 Pflichtenheft)
 # -----------------------------------------------------------------------------
 
+import json
 from urllib.parse import urlparse
 
 import requests
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 # Keys für ir.config_parameter
 NETBOX_BASE_URL_KEY = "nt_serviceman.netbox_base_url"
 NETBOX_API_TOKEN_KEY = "nt_serviceman.netbox_api_token"
+NETBOX_DEVICE_FIELD_NAMES_KEY = "nt_serviceman.netbox_device_field_names"
+NETBOX_DEVICE_SAMPLE_KEY = "nt_serviceman.netbox_device_sample"
 
 
 class NTServiceManConfig(models.Model):
@@ -187,3 +191,266 @@ class NTServiceManConfig(models.Model):
         """Ruft alle Device Roles von NetBox ab."""
         self.ensure_one()
         return self.env["nt_serviceman.netbox_device_role"].action_fetch_from_netbox()
+
+    @api.model
+    def _get_netbox_device_field_names(self):
+        """Liefert die gecachten NetBox-Device-Feldnamen (aus Schema)."""
+        icp = self.env["ir.config_parameter"].sudo()
+        raw = icp.get_param(NETBOX_DEVICE_FIELD_NAMES_KEY, "") or ""
+        if not raw.strip():
+            return []
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return []
+
+    @api.model
+    def _get_netbox_device_sample(self):
+        """Liefert das gecachte Beispiel-Device (für Anzeige mit Werten)."""
+        icp = self.env["ir.config_parameter"].sudo()
+        raw = icp.get_param(NETBOX_DEVICE_SAMPLE_KEY, "") or ""
+        if not raw.strip():
+            return {}
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return {}
+
+    @api.model
+    def _get_value_by_path(self, data, path):
+        """Liest Wert aus verschachteltem Dict via Pfad (z.B. device_type.manufacturer.name)."""
+        if not data or not path:
+            return None
+        parts = path.split(".")
+        obj = data
+        for part in parts:
+            if not isinstance(obj, dict):
+                return None
+            obj = obj.get(part)
+        return obj
+
+    @api.model
+    def _format_field_value(self, val):
+        """Formatiert einen Feldwert für die Anzeige (nur wenn gefüllt)."""
+        if val is None:
+            return None
+        if isinstance(val, dict):
+            return val.get("display") or val.get("name") or val.get("model") or str(val)
+        if isinstance(val, list):
+            if not val:
+                return None
+            first = val[0]
+            if isinstance(first, dict):
+                d = first.get("display") or first.get("name")
+                if d:
+                    return f"{d}" + (f" (+{len(val)-1})" if len(val) > 1 else "")
+            return str(val) if len(val) <= 2 else f"{val[0]} (+{len(val)-1})"
+        if isinstance(val, bool):
+            return "Ja" if val else "Nein"
+        s = str(val).strip()
+        return s if s else None
+
+    def _extract_fields_from_schema_properties(self, props, components, prefix=""):
+        """Rekursiv: Feldnamen aus OpenAPI-Schema-Properties extrahieren."""
+        if not props or not isinstance(props, dict):
+            return []
+        result = []
+        for key, prop in props.items():
+            if not isinstance(prop, dict):
+                continue
+            path = f"{prefix}.{key}" if prefix else key
+            result.append(path)
+            ref = prop.get("$ref")
+            if ref:
+                schema_name = ref.split("/")[-1] if ref.startswith("#/") else ref
+                components = components or {}
+                comp_schemas = components.get("schemas") or components.get("components", {}).get("schemas", {})
+                sub = comp_schemas.get(schema_name)
+                if sub and isinstance(sub, dict):
+                    sub_props = sub.get("properties") or sub.get("items", {}).get("properties")
+                    if sub_props:
+                        result.extend(
+                            self._extract_fields_from_schema_properties(
+                                sub_props, components, path
+                            )
+                        )
+            elif prop.get("type") == "object":
+                sub_props = prop.get("properties") or {}
+                if sub_props:
+                    result.extend(
+                        self._extract_fields_from_schema_properties(
+                            sub_props, components, path
+                        )
+                    )
+        return result
+
+    def _extract_device_fields_from_schema(self, schema_dict):
+        """Extrahiert Device-Felder aus NetBox OpenAPI-Schema."""
+        if not schema_dict or not isinstance(schema_dict, dict):
+            return []
+        paths = schema_dict.get("paths") or {}
+        comp_schemas = {}
+        comp = schema_dict.get("components")
+        if isinstance(comp, dict):
+            comp_schemas = comp.get("schemas") or {}
+        if not comp_schemas and isinstance(schema_dict.get("schemas"), dict):
+            comp_schemas = schema_dict.get("schemas")
+        device_schema = None
+        for path_key, path_val in sorted(paths.items(), key=lambda x: ("{id}" not in x[0], x[0])):
+            if "devices" not in path_key or not isinstance(path_val, dict):
+                continue
+            get_spec = path_val.get("get")
+            if not get_spec or not isinstance(get_spec, dict):
+                continue
+            responses = (get_spec.get("responses") or {}).get("200") or {}
+            content = (responses.get("content") or {}).get("application/json") or {}
+            schema = content.get("schema")
+            if not schema:
+                continue
+            ref = schema.get("$ref")
+            if ref:
+                name = ref.split("/")[-1]
+                device_schema = comp_schemas.get(name) or schema
+            else:
+                device_schema = schema
+            if device_schema:
+                break
+        if not device_schema:
+            for name, sch in comp_schemas.items():
+                if "device" in name.lower() and name.lower() != "nesteddevice":
+                    device_schema = sch
+                    break
+        if not device_schema:
+            return []
+        props = device_schema.get("properties") or {}
+        fields_raw = self._extract_fields_from_schema_properties(
+            props, {"schemas": comp_schemas}
+        )
+        return sorted(set(fields_raw))
+
+    @api.model
+    def _expand_custom_fields_in_field_list(self, fields_list, sample_device=None):
+        """Ersetzt 'custom_fields' durch einzelne Felder (custom_fields.license, etc.).
+        Benutzer legen in NetBox weitere Custom Fields an – diese sollen einzeln verfügbar sein.
+        """
+        if not fields_list or not sample_device or not isinstance(sample_device, dict):
+            return fields_list
+        cf = sample_device.get("custom_fields")
+        if not isinstance(cf, dict):
+            return fields_list
+        out = [f for f in fields_list if f != "custom_fields"]
+        for key in sorted(cf.keys()):
+            path = f"custom_fields.{key}"
+            if path not in out:
+                out.append(path)
+        return sorted(set(out))
+
+    def _extract_fields_from_dict(self, data, prefix=""):
+        """Extrahiert Feldpfade rekursiv aus einem JSON-Dict (Fallback wenn Schema fehlschlägt)."""
+        if not isinstance(data, dict):
+            return []
+        result = []
+        for key, val in data.items():
+            path = f"{prefix}.{key}" if prefix else key
+            result.append(path)
+            if isinstance(val, dict) and val:
+                result.extend(self._extract_fields_from_dict(val, path))
+            elif isinstance(val, list) and val and isinstance(val[0], dict):
+                result.extend(self._extract_fields_from_dict(val[0], path))
+        return result
+
+    def _fetch_one_device_json(self, base_url, token):
+        """Lädt ein beliebiges Device als Beispiel (für Anzeige mit Werten)."""
+        headers = {"Accept": "application/json"}
+        if token:
+            headers["Authorization"] = f"Token {token}"
+        base_url = base_url.rstrip("/")
+        list_url = f"{base_url}/api/dcim/devices/?limit=1"
+        try:
+            r = requests.get(list_url, headers=headers, timeout=30, verify=False)
+            r.raise_for_status()
+            data = r.json()
+        except (requests.RequestException, json.JSONDecodeError):
+            return None
+        results = data.get("results") or []
+        if not results:
+            return None
+        device_id = results[0].get("id")
+        if not device_id:
+            return None
+        detail_url = f"{base_url}/api/dcim/devices/{device_id}/"
+        try:
+            r2 = requests.get(detail_url, headers=headers, timeout=30, verify=False)
+            r2.raise_for_status()
+            return r2.json()
+        except (requests.RequestException, json.JSONDecodeError):
+            return None
+
+    def _fetch_device_fields_from_sample(self, base_url, token):
+        """Fallback: Ein Device abrufen und Feldnamen aus dem JSON extrahieren (Option A)."""
+        device = self._fetch_one_device_json(base_url, token)
+        if not device:
+            return [], None
+        fields_list = sorted(set(self._extract_fields_from_dict(device)))
+        return fields_list, device
+
+    def action_refresh_netbox_device_fields(self):
+        """Lädt Device-Felder aus NetBox-Schema und speichert sie (Kap. 8.11.1a)."""
+        self.ensure_one()
+        base_url, token = self._get_netbox_params()
+        if not base_url:
+            raise UserError("Keine NetBox-URL konfiguriert.")
+        url = f"{base_url.rstrip('/')}/api/schema/"
+        if "?" not in url:
+            url += "?format=json"
+        headers = {"Accept": "application/json"}
+        if token:
+            headers["Authorization"] = f"Token {token}"
+        try:
+            r = requests.get(url, headers=headers, timeout=90, verify=False)
+            r.raise_for_status()
+        except requests.RequestException as e:
+            raise UserError(
+                f"NetBox-Schema konnte nicht geladen werden: {e}"
+            ) from e
+        try:
+            schema_dict = r.json()
+        except json.JSONDecodeError:
+            schema_dict = None
+        fields_list = []
+        sample_device = None
+        if schema_dict:
+            fields_list = self._extract_device_fields_from_schema(schema_dict)
+        if not fields_list:
+            fields_list, sample_device = self._fetch_device_fields_from_sample(
+                base_url, token
+            )
+        if not fields_list:
+            raise UserError(
+                "NetBox-Device-Felder konnten nicht ermittelt werden. "
+                "Schema-Abruf lieferte kein gültiges JSON oder keine Felder; "
+                "Fallback (Device-Abruf) ebenfalls fehlgeschlagen. "
+                "Prüfen Sie NetBox-URL, API-Token und ob unter /api/dcim/devices/ Geräte existieren."
+            )
+        if not sample_device:
+            sample_device = self._fetch_one_device_json(base_url, token)
+        # custom_fields in separate Felder aufteilen (Kap. 8.11; Benutzer legen weitere an)
+        fields_list = self._expand_custom_fields_in_field_list(fields_list, sample_device)
+        icp = self.env["ir.config_parameter"].sudo()
+        icp.set_param(NETBOX_DEVICE_FIELD_NAMES_KEY, json.dumps(fields_list))
+        icp.set_param(
+            NETBOX_DEVICE_SAMPLE_KEY,
+            json.dumps(sample_device) if sample_device else "",
+        )
+        # Feldlisten aller Leistungen mit neuer Konfiguration synchronisieren
+        self.env["nt_serviceman.service"].search([])._ensure_required_device_field_lines()
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Device-Felder geladen",
+                "message": f"{len(fields_list)} Felder aus NetBox-Schema extrahiert.",
+                "type": "success",
+                "sticky": False,
+            },
+        }

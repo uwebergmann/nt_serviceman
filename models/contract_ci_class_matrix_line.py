@@ -114,6 +114,19 @@ class ContractCIClassMatrixLine(models.Model):
             if invalid:
                 self.service_ids = self.service_ids - invalid
 
+    def write(self, vals):
+        res = super().write(vals)
+        if "service_ids" in vals:
+            # CIs neu synchronisieren: gebuchte Leistungen + Service-Felder-Status (Kap. 8.11.2)
+            for line in self:
+                if line.contract_id and line.ci_class_id:
+                    cis = line.contract_id.configuration_item_ids.filtered(
+                        lambda c: c.ci_class_id == line.ci_class_id
+                    )
+                    cis._sync_contract_service_ids()
+                    cis.invalidate_recordset(["service_fields_status", "service_fields_status_icon"])
+        return res
+
     @api.constrains("service_ids", "ci_class_id")
     def _check_services_available_for_ci_class(self):
         """Prüft, dass neue (aktive) Leistungen verfügbar sind. Archivierte bleiben erlaubt."""

@@ -55,6 +55,16 @@
                         <field name="ci_class_ids" nolabel="1"
                                options="{'no_create': True}"/>
                     </group>
+                    <group string="NetBox-Device-Felder (Häkchen = erforderlich)" col="1">
+                        <field name="required_device_field_ids" nolabel="1"
+                               help="Häkchen = dieses Feld muss am CI ausgefüllt sein. Keine Einträge? Unter Konfiguration den Button „Device-Felder aus Schema laden“ ausführen.">
+                            <tree string="Device-Felder" editable="bottom" delete="false" create="false">
+                                <field name="is_required" string="Erforderlich"/>
+                                <field name="field_path" readonly="1"/>
+                                <field name="example_value" readonly="1"/>
+                            </tree>
+                        </field>
+                    </group>
                 </sheet>
                 <field name="message_follower_ids" invisible="1"/>
                 <field name="activity_ids" invisible="1"/>

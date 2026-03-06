@@ -23,6 +23,9 @@
                         <div class="mt16">
                             <button name="action_fetch_device_roles_from_netbox" type="object"
                                     string="Device Roles von NetBox abrufen" class="btn-primary"/>
+                            <button name="action_refresh_netbox_device_fields" type="object"
+                                    string="Device-Felder aus Schema laden" class="btn-secondary"
+                                    help="Lädt die Device-Struktur aus dem NetBox-OpenAPI-Schema (Kap. 8.11.1a)."/>
                         </div>
                     </group>
                 </sheet>

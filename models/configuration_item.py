@@ -134,6 +134,113 @@ class ConfigurationItem(models.Model):
         sanitize=False,
         help="Punkt-Liste der gebuchten Leistungen (nur Bezeichnung) zur Anzeige im Formular.",
     )
+    service_fields_status = fields.Selection(
+        [
+            ("ok", "Vollständig"),
+            ("warning", "Fehlende Felder"),
+            ("na", "Nicht prüfbar"),
+        ],
+        string="Service-Felder-Status",
+        compute="_compute_service_fields_status",
+        help="Kap. 8.11.2: Sind alle erforderlichen NetBox-Felder für die gebuchten Leistungen ausgefüllt?",
+    )
+    service_fields_status_icon = fields.Char(
+        string="Status",
+        compute="_compute_service_fields_status",
+        help="Symbol: ✓ = vollständig, ⚠ = fehlende Felder (Kap. 8.11.2). Zeilenfarbe verstärkt.",
+    )
+    fehlende_felder_html = fields.Html(
+        string="Fehlende Felder",
+        compute="_compute_service_fields_status",
+        sanitize=False,
+        help="Kap. 8.11.3: Pro Leistung die fehlenden NetBox-Felder – bitte in NetBox nachpflegen.",
+    )
+
+    @api.depends(
+        "contract_id",
+        "contract_service_ids",
+        "contract_service_ids.required_device_field_ids",
+        "netbox_raw_response",
+        "netbox_display_url",
+        "netbox_display",
+    )
+    def _compute_service_fields_status(self):
+        """Prüft pro gebuchter Leistung ob alle erforderlichen Felder gefüllt sind (Kap. 8.11.2/8.11.3)."""
+        config = self.env["nt_serviceman.config"]
+        for rec in self:
+            status = "na"
+            icon_char = ""
+            fehlende_html = markupsafe.Markup("")
+            if not rec.contract_id or not rec.contract_service_ids:
+                rec.service_fields_status = status
+                rec.service_fields_status_icon = icon_char
+                rec.fehlende_felder_html = fehlende_html
+                continue
+            data = {}
+            if rec.netbox_raw_response:
+                try:
+                    data = json.loads(rec.netbox_raw_response)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            if not isinstance(data, dict):
+                status = "warning"
+                icon_char = "⚠"
+                fehlende_html = markupsafe.Markup(
+                    "<p class='text-warning'>NetBox-Daten nicht verfügbar. "
+                    "Bitte „Hole NetBox-Item“ ausführen.</p>"
+                )
+            else:
+                missing_per_service = []
+                for service in rec.contract_service_ids:
+                    required = service.required_device_field_ids.filtered(
+                        lambda f: f.is_required
+                    )
+                    fields_missing = []
+                    for field_line in required:
+                        val = config._get_value_by_path(data, field_line.field_path)
+                        if not config._format_field_value(val):
+                            fields_missing.append(field_line.field_path)
+                    if fields_missing:
+                        missing_per_service.append(
+                            (service.name or service.code, fields_missing)
+                        )
+                if missing_per_service:
+                    status = "warning"
+                    icon_char = "⚠"
+                    parts = []
+                    for svc_name, field_paths in missing_per_service:
+                        escaped_name = markupsafe.escape(svc_name)
+                        field_list = ", ".join(
+                            markupsafe.escape(p) for p in field_paths
+                        )
+                        parts.append(
+                            f"<li><strong>{escaped_name}:</strong> {field_list}</li>"
+                        )
+                    netbox_link = ""
+                    if rec.netbox_display_url:
+                        url = markupsafe.escape(rec.netbox_display_url)
+                        text = markupsafe.escape(
+                            rec.netbox_display or "In NetBox öffnen"
+                        )
+                        netbox_link = (
+                            f"<p class='mb-2'><a href='{url}' target='_blank' rel='noopener noreferrer' "
+                            f"class='btn btn-sm btn-link'>🔗 {text}</a> – dort Felder pflegen, "
+                            "dann „Hole NetBox-Item“ erneut ausführen.</p>"
+                        )
+                    fehlende_html = markupsafe.Markup(
+                        netbox_link
+                        + "<p class='text-warning mb-1'><strong>Fehlende Felder pro Leistung:</strong></p>"
+                        + f"<ul class='mb-0'>{''.join(parts)}</ul>"
+                    )
+                else:
+                    status = "ok"
+                    icon_char = "✓"
+                    fehlende_html = markupsafe.Markup(
+                        "<p class='text-success mb-0'>✓ Alle erforderlichen Felder sind ausgefüllt.</p>"
+                    )
+            rec.service_fields_status = status
+            rec.service_fields_status_icon = icon_char
+            rec.fehlende_felder_html = fehlende_html
 
     @api.depends("contract_id", "contract_service_ids", "contract_service_ids.name", "contract_service_ids.active")
     def _compute_gebuchte_leistungen_html(self):

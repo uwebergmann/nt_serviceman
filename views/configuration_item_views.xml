@@ -67,6 +67,9 @@
                         <field name="gebuchte_leistungen_html" nolabel="1" readonly="1"
                                placeholder="Leistungen ergeben sich aus dem Vertrag und werden bei Zuordnung übernommen."/>
                     </group>
+                    <group string="Service-Voraussetzungen" col="1" attrs="{'invisible': [('contract_id', '=', False)]}" class="mt16">
+                        <field name="fehlende_felder_html" nolabel="1" readonly="1"/>
+                    </group>
                     <group string="Debug (Roh-JSON)" class="mt16">
                         <div class="o_netbox_raw_json">
                             <field name="netbox_raw_response" nolabel="1"

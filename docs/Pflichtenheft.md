@@ -586,6 +586,102 @@ Für wiederkehrende Produkte (`product.template` mit `detailed_type = "recurrent
 
 ---
 
+## 8.11 Service-Voraussetzungen aus NetBox (geplant)
+
+**Kontext:** NT:ServiceMan soll die Automatisierung der definierten Leistungen vorbereiten und später initialisieren. Die Leistungen werden im Wesentlichen mit Daten aus NetBox gesteuert. Damit eine Leistung (z. B. OpenCVE-Service, Konfig-Backup) erbracht werden kann, müssen bestimmte NetBox-Felder am CI ausgefüllt sein – z. B. Hersteller, Gerätebezeichnung oder Geräteklasse, damit externe Werkzeuge die Abfrage eingrenzen können.
+
+**Ziel:** Der Benutzer definiert pro Leistung, welche NetBox-Felder erforderlich sind. Das System prüft die Vollständigkeit am CI und signalisiert fehlende Felder – im Vertrag, am CI und mit Verweis auf die Nachpflege in NetBox.
+
+Die Umsetzung erfolgt in **drei aufeinander aufbauenden Teilen**, die nacheinander angegangen werden:
+
+### 8.11.1 Teil 1: Feldliste pro Leistung (Konfiguration)
+
+**Anforderung:** Zu jeder Leistung existiert eine Liste der aus NetBox bereitgestellten Felder. Der Benutzer markiert per Häkchen: *Dieses Feld muss für die aktuell ausgewählte Leistung ausgefüllt sein.*
+
+**Methode zur Ermittlung der Feldstruktur:** NetBox-Schema-API (Option B) – keine halben Sachen. Der Katalog der verfügbaren Felder wird aus dem offiziellen OpenAPI-Schema von NetBox abgeleitet, nicht aus einem Beispiel-CI.
+
+**Teilschritte (Reihenfolge):**
+
+#### 8.11.1a Teilschritt: Device-Struktur ermitteln und anzeigen
+
+**Ziel:** Die Struktur eines NetBox-Devices aus dem Schema ermitteln und als einfache Liste darstellen.
+
+**Technik:**
+- Endpoint: `GET /api/schema/` – NetBox liefert das OpenAPI-Schema (JSON)
+- Device-Modell: Schema für `/api/dcim/devices/` auswerten, alle Felder (inkl. Pfade für verschachtelte Objekte wie `device_type.manufacturer`) extrahieren
+- **Hinweis:** Schema-Abruf kann langsam sein (NetBox: 7–8 s); ggf. cachen
+- **Darstellung:** Im Leistung-Formular (Konfiguration > Leistungen), unter dem Bereich „Verfügbare CI-Klassen“, ein neuer Bereich „NetBox-Device-Felder“ mit einer einfachen Liste der Feldnamen (noch ohne Häkchen)
+
+**Abnahme:** Beim Öffnen einer Leistung werden die ermittelten NetBox-Device-Felder als Liste angezeigt.
+
+#### 8.11.1b Teilschritt: Häkchen „erforderlich“ pro Feld (folgt auf 8.11.1a)
+
+**Ziel:** Pro Feld ein Häkchen „Für diese Leistung erforderlich“. Auswahl wird gespeichert.
+
+**Technik:**
+- Pro Leistung: Many2many oder Relationstabelle zu den erforderlichen Feldern
+- Benutzerschnittstelle: Checkboxen in der Feldliste (8.11.1a)
+
+**Abnahme:** Pro Leistung können erforderliche Felder per Häkchen markiert und gespeichert werden.
+
+---
+
+**Beispiel (nach 8.11.1b):** Leistung „Proaktiver Sicherheits-Service (CVE)“ – erforderlich: Hersteller (device_type.manufacturer), Gerätebezeichnung/Modell (device_type), ggf. weitere Felder je nach Abfrage-Logik des CVE-Werkzeugs
+
+---
+
+### 8.11.2 Teil 2: Indikator in Verträgen (Grün/Rot)
+
+**Anforderung:** Wird ein CI einem Vertrag zugeordnet (CMDB-Tab, Wizard „CI zuordnen“), soll optisch erkennbar sein:
+- **Grün:** Für alle gebuchten Leistungen sind die erforderlichen Felder vorhanden und ausgefüllt
+- **Rot:** Mindestens ein Feld für mindestens eine gebuchte Leistung fehlt am CI
+
+**Gewählte Darstellung (Option A – Icon-Spalte):**
+- **Vollständig:** Grünes Häkchen (`fa-check-circle` + `text-success`)
+- **Fehlende Felder:** Gelbes Dreieck mit Ausrufezeichen (`fa-exclamation-triangle` + `text-warning`)
+
+**Weitere Optionen (nicht gewählt):**
+
+| Option | Beschreibung | Vor-/Nachteile |
+|--------|--------------|----------------|
+| **A: Icon-Spalte** | Eigene Spalte mit farbigem Icon (z. B. ✓ / ⚠ oder fa-check-circle / fa-exclamation-circle) | Kompakt, eindeutig; benötigt eine Spalte Platz |
+| **B: Badge/Text** | Kurzer Badge neben dem CI-Namen: „Vollständig“ (grün) oder „Fehlende Felder“ (rot) | Selbsterklärend; mehr Platzbedarf |
+| **C: Zeilenfärbung** | Ganze Zeile grün oder rot hinterlegt (`decoration-success` / `decoration-danger`) | Sehr auffällig, schnell erfassbar; kann bei vielen CIs optisch überladen wirken |
+| **D: Farbiger Punkt** | Kleiner farbiger Punkt/Circle in einer Spalte (über Icon oder Custom-CSS) | Sehr kompakt; weniger selbsterklärend |
+| **E: Status-Spalte (Text)** | Eigene Spalte „Status“ mit Werten wie „OK“ / „Fehlende Felder“ | Explizit, barrierefreundlich; keine Farbsemantik nötig |
+| **F: Kombination** | z. B. Icon + Tooltip mit Details („Leistung X: Feld Y fehlt“) | Höchste Informationsdichte; mehr Implementierungsaufwand |
+
+**Betroffene Stellen:**
+- **CMDB-Tab** (Vertragsformular): CI-Liste des Vertrags – hier ist der Indikator laut Anforderung zentral
+- **Wizard „CI zuordnen“**: Optional; Nutzer könnte vor der Zuordnung sehen, welche CI bereits vollständig sind
+
+**Technische Idee:**
+- Beim CI-Abruf aus NetBox: Werte der erforderlichen Felder mitlesen und in Odoo halten (oder bei jedem Abruf prüfen)
+- Berechnung: Pro CI, pro gebuchter Leistung prüfen, ob alle erforderlichen Felder gefüllt sind
+- Darstellung: Icon-Spalte am CI – grünes Häkchen (vollständig) / gelbes Dreieck (fehlende Felder)
+
+**Abnahme:** In der CI-Liste des Vertrags ist bei jedem CI der Status (vollständig/unvollständig) sichtbar.
+
+---
+
+### 8.11.3 Teil 3: Hinweise im CI-Formular
+
+**Anforderung:** Im CI-Formular soll klar benannt werden: *Leistung X: fehlende Felder [Liste]*. Der Nutzer trägt die Felder in NetBox nach – der Link zum CI in NetBox ist vorhanden und führt direkt dorthin.
+
+**Technische Idee:**
+- Bereich „Service-Voraussetzungen“ oder „Fehlende Felder“ im CI-Formular
+- Pro gebuchter Leistung: wenn Felder fehlen → Liste der fehlenden Felder anzeigen
+- Link zu NetBox (netbox_url) prominent – Nutzer öffnet NetBox und pflegt dort nach
+- Nach NetBox-Aktualisierung: Button „Hole von NetBox“ am CI → erneuter Abruf, Status aktualisiert sich
+
+**Abnahme:** Im CI-Formular sind fehlende Felder pro Leistung benannt; NetBox-Link ist verfügbar.
+
+---
+
+**Reihenfolge:** Teil 1 → Teil 2 → Teil 3 (jeweils baut auf dem Vorherigen auf).
+
+---
+
 ## 9. REST-Integration NetBox → Odoo
 
 ### 9.1 Auslöser (v0.9)
@@ -851,7 +947,7 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | 2 | **Portal** – CI-Klasse primär, Device Role als Detail | Kap. 8.9 |
 | 3 | **Chatter** funktioniert nicht richtig (Bug) | – |
 | 4 | **Tenant → Partner** umbenennen; Verknüpfung über Kundennummer Odoo–NetBox | Kap. 8.1 |
-| 5 | **Service-Voraussetzungen aus NetBox** (z. B. OpenCVE) – pro Leistung erforderliche NetBox-Felder; Indikator OK/Rot; Techniker-Hinweise | geplant |
+| 5 | **Service-Voraussetzungen aus NetBox** (Kap. 8.11) – dreigeteilt: (1) Feldliste pro Leistung, (2) Indikator Grün/Rot in Verträgen, (3) Hinweise im CI-Formular | geplant |
 | 6 | **NetBox: Initial-Import** – alle CI aus NetBox holen und in Odoo anlegen | geplant |
 | 7 | **NetBox: Update bei Änderungen** – Mechanismus (Webhook/Cron), der bei NetBox-Änderungen Odoo aktualisiert | geplant |
 | 8 | **Filter und Gruppierungen** – erweiterte Nutzerunterstützung in Listen (CI, Verträge, Services) | geplant |
@@ -870,7 +966,7 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | NetBox | **Initial-Import** | Alle Devices aus NetBox abrufen und als CI in Odoo anlegen (Bulk-Import) |
 | NetBox | **Update bei Änderungen** | Mechanismus, der bei Änderungen in NetBox ein Update in Odoo auslöst (Webhook, periodischer Abgleich o. Ä.) |
 | NetBox/CI | **CI–Kunde / Partner** | Zuordnung CI zu Kunde prüfen (in NetBox vorhanden?); evtl. Odoo-Kundennummer in NetBox gepflegt → Verknüpfung herstellen (vgl. Tenant → Partner) |
-| Services | **Service-Voraussetzungen** | Pro Leistung: benutzergepflegte Feldliste (NetBox-Felder, die gefüllt sein müssen). Feld leer → Service nicht möglich. Basis für Automatisierung (z. B. OpenCVE). |
+| Services | **Service-Voraussetzungen** | Kap. 8.11: (1) Feldliste pro Leistung mit Häkchen, (2) Grün/Rot-Indikator in Verträgen, (3) Fehlende-Felder-Hinweise im CI-Formular + NetBox-Link |
 | UX | **Filter und Gruppierungen** | Erweiterte Filter und Gruppierungen in Listen, damit Nutzer gut unterstützt werden |
 
 ### Offene Punkte – Detail (einzelnd umsetzbar, Reihenfolge nach Aufwand)
@@ -881,7 +977,10 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | 2 | **Portal** | ungewiss | CI-Klasse primär, Device Role als Detail. intero_net_portal zeigt aktuell keine CIs; Aufwand abhängig davon, ob nur View-Anpassung oder neues Portal-Feature nötig (4 h bis 2 Tage). |
 | 3 | **Chatter-Bug** | ungewiss | Chatter funktioniert mindestens bei CI nicht; vermutlich auch bei Vertrag und anderen Modellen – Analyse erforderlich. |
 | 4 | **Tenant → Partner** | 4–8 h | Feld „Tenant" in „Partner" umbenennen (Odoo-Schreibweise). NetBox prüfen, ob Kundennummer aus Odoo vorhanden ist; Verknüpfung CI–Partner darüber herstellen. |
-| 5 | **Service-Voraussetzungen (NetBox-Felder)** | mittel–hoch | Pro Leistung: benutzergepflegte Feldliste (NetBox-Felder, die gefüllt sein müssen). Feld leer → Service nicht möglich. Indikator OK/Rot; Techniker-Hinweise. Basis für Automatisierung (z. B. OpenCVE). |
+| 5a1 | **Service-Voraussetzungen 8.11.1a** | mittel | Device-Struktur aus NetBox-Schema (/api/schema/) ermitteln; Feldliste im Leistung-Formular unter „Verfügbare CI-Klassen“ anzeigen. |
+| 5a2 | **Service-Voraussetzungen 8.11.1b** | mittel | Häkchen „erforderlich“ pro Feld; Many2many/Relation; Speicherung pro Leistung. |
+| 5b | **Service-Voraussetzungen Teil 2** (Kap. 8.11.2) | mittel | Indikator Grün/Rot in Verträgen: Bei CI-Zuordnung Status „vollständig“/„unvollständig“ sichtbar (CMDB-Tab). |
+| 5c | **Service-Voraussetzungen Teil 3** (Kap. 8.11.3) | mittel | Hinweise im CI-Formular: „Leistung X: fehlende Felder [Liste]“; NetBox-Link zum Nachpflegen. |
 | 6 | **NetBox Initial-Import** | 1–2 Tage | Alle Devices aus NetBox (z. B. /api/dcim/devices/) abrufen und als CI in Odoo anlegen. Button oder Aktion in Konfiguration. |
 | 7 | **NetBox Update bei Änderungen** | 2–5 Tage | Mechanismus: Webhook (NetBox → Odoo) oder periodischer Abgleich (Cron). Bei Änderung in NetBox → Update des betroffenen CI in Odoo. |
 | 8 | **Filter und Gruppierungen** | 4–8 h | Erweiterte Filter und Gruppierungen in CI-, Vertrags- und Service-Listen für bessere Nutzerunterstützung. |

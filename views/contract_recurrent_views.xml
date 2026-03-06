@@ -18,7 +18,11 @@
                                 class="btn-primary"/>
                     </group>
                     <field name="configuration_item_ids" colspan="4" nolabel="1">
-                        <tree string="" create="false" delete="false" editable="bottom">
+                        <tree string="" create="false" delete="false" editable="bottom"
+                              decoration-success="service_fields_status == 'ok'"
+                              decoration-warning="service_fields_status == 'warning'">
+                            <field name="service_fields_status" column_invisible="1"/>
+                            <field name="service_fields_status_icon" string=""/>
                             <field name="cmdb_id"/>
                             <field name="name"/>
                             <field name="ci_class_id"/>
