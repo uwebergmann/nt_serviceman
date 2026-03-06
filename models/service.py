@@ -6,6 +6,8 @@
 # Autor: $Author$
 # -----------------------------------------------------------------------------
 
+import inspect
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -95,7 +97,11 @@ class Service(models.Model):
         return records
 
     def unlink(self):
-        """Leistungen werden nicht gelöscht, nur archiviert (Kap. 8.7 Soft Delete)."""
+        """Leistungen werden nicht gelöscht, nur archiviert (Kap. 8.7 Soft Delete).
+        Ausnahme: Modul-Update – Odoo muss verwaiste Datensätze bereinigen können."""
+        for frame in inspect.stack()[1:]:
+            if frame.function == "_process_end_unlink_record":
+                return super().unlink()
         raise UserError(
             _(
                 "Leistungen werden nicht gelöscht. "

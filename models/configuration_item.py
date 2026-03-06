@@ -462,24 +462,14 @@ class ConfigurationItem(models.Model):
             r = requests.get(url, headers=headers, timeout=15, verify=False)
             r.raise_for_status()
             data = r.json()
-            nb_last_updated = self._parse_netbox_datetime(data.get("last_updated"))
 
-            # Sync-Logik: nur aktualisieren wenn Feld leer oder NetBox jünger
-            do_update = False
-            if not self.netbox_last_updated:
-                do_update = True
-            elif nb_last_updated:
-                nb_dt = fields.Datetime.from_string(nb_last_updated)
-                local_dt = fields.Datetime.from_string(self.netbox_last_updated)
-                if nb_dt > local_dt:
-                    do_update = True
-
-            if do_update:
-                self.netbox_raw_response = json.dumps(data, indent=2, ensure_ascii=False)
-                self._extract_netbox_fields(data)
-                self.netbox_last_sync = fields.Datetime.now()
-                self.netbox_sync_state = "ok"
-                self.netbox_sync_error = False
+            # Immer aktualisieren bei manuellem Klick – Änderungen an verknüpften
+            # Objekten (z.B. device_type.description) ändern device.last_updated nicht.
+            self.netbox_raw_response = json.dumps(data, indent=2, ensure_ascii=False)
+            self._extract_netbox_fields(data)
+            self.netbox_last_sync = fields.Datetime.now()
+            self.netbox_sync_state = "ok"
+            self.netbox_sync_error = False
         except requests.RequestException as e:
             self._extract_netbox_fields({})
             self.netbox_sync_state = "failed"
