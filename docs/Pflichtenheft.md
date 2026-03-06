@@ -1,8 +1,8 @@
 # Pflichtenheft  
-## NT:ServiceMan v0.9 – CI-Abbildung in Odoo mit NetBox-REST-Anbindung
+## NT:ServiceMan v1.0 – CI-Abbildung in Odoo mit NetBox-REST-Anbindung
 
 **Projekt:** NT:ServiceMan  
-**Version:** 0.9 / 0.9.1 / 0.9.2 (Leistungen, Matrix Verfügbarkeit) / 0.9.4 (Leistungsmatrix am Produkt)  
+**Version:** 1.0 (erreicht)  
 **Status:** Pflichtenheft  
 **Ziel:** Startfähigkeit herstellen, fachliche/technische Ebenen trennen  
 **Nicht-Ziel:** Vollständige Automatisierung
@@ -112,7 +112,6 @@ Pro Vertrag:
 - Ist-Menge = Anzahl aktiver CI je Klasse
 
 Bei Abweichung:
-- Hinweis an Vertrieb (Aktivität / Chatter)
 - keine automatische Preisänderung
 - Preisänderungen erfolgen ausschließlich manuell
 
@@ -173,7 +172,7 @@ Die Version gilt als erfolgreich umgesetzt, wenn:
    - Tenant-Name
 7. Mehrere CI können **einem wiederkehrenden Vertrag** zugeordnet werden.
 8. Die zugeordneten **reale CI** sind als Liste im Vertrag sichtbar.
-9. **Plan/Ist-Vergleich** (Planmenge vs. Anzahl CI je Geräteklasse) ist möglich; bei Abweichung Hinweis an Vertrieb (Aktivität/Chatter).
+9. **Plan/Ist-Vergleich** (Planmenge vs. Anzahl CI je Geräteklasse) ist möglich.
 
 ---
 
@@ -542,7 +541,9 @@ Diese Zuordnung ist unabhängig von Paketen und Preisen; sie definiert nur die t
 
 ---
 
-## 8.9 Anzeige im Portal (v0.9.1)
+## 8.9 Anzeige im Portal (nicht v1.0)
+
+*Siehe [FEATURE-LIST.md](FEATURE-LIST.md) – wird bei geplanter Umsetzung hier ausformuliert.*
 
 - **Primär sichtbar:** CI-Klasse
 - **Device Role** nur als Detailinformation
@@ -586,7 +587,7 @@ Für wiederkehrende Produkte (`product.template` mit `detailed_type = "recurrent
 
 ---
 
-## 8.11 Service-Voraussetzungen aus NetBox (geplant)
+## 8.11 Service-Voraussetzungen aus NetBox (v0.9.11)
 
 **Kontext:** NT:ServiceMan soll die Automatisierung der definierten Leistungen vorbereiten und später initialisieren. Die Leistungen werden im Wesentlichen mit Daten aus NetBox gesteuert. Damit eine Leistung (z. B. OpenCVE-Service, Konfig-Backup) erbracht werden kann, müssen bestimmte NetBox-Felder am CI ausgefüllt sein – z. B. Hersteller, Gerätebezeichnung oder Geräteklasse, damit externe Werkzeuge die Abfrage eingrenzen können.
 
@@ -937,53 +938,21 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | 31 | **CI-Zuordnung nur Matrix-CI-Klassen** (Kap. 11.1) | Nur CI zuordenbar, deren CI-Klasse in der Leistungsmatrix vorkommt; Wizard Domain + Validierung; Constraint am CI | v0.9.11 |
 | 32 | **Gebuchte Leistungen am CI – Darstellung** (Kap. 11.3) | „Buchbar"→„Gebucht"; nur bei Vertrag sichtbar; read-only Punkt-Liste mit Bezeichnungen | v0.9.11 |
 | 33 | **Archivierte Leistungen am CI** (Kap. 11.3) | contract_service_ids inkl. archivierter Leistungen; separate Liste „Nicht mehr angeboten" im CI-Formular | v0.9.11 |
-| 34 | **Plan/Ist-Mengenabweichung** (Kap. 4.9) | quantity_deviation in Leistungsmatrix; Filter „Mit Mengenabweichung" in Vertragsliste | v0.9.11 |
+| 34 | **Plan/Ist-Mengenabweichung** (Kap. 4.9) | quantity_deviation in Leistungsmatrix; Filter „Plan-Ist-Abweichung" in Vertragsliste | v0.9.11 |
+| 35 | **Service-Voraussetzungen aus NetBox** (Kap. 8.11) | (1) Feldliste pro Leistung mit Häkchen, custom_fields expandiert; (2) Grün/Gelb-Indikator im CMDB-Tab; (3) Fehlende Felder im CI-Formular + NetBox-Link; Sync bei Matrix-Änderung | v0.9.11 |
+| 36 | **Chatter sichtbar** (Bug) | Chatter-Darstellung in Formularen (Leistungen, CI-Klassen, CIs): Felder in oe_chatter mit Widgets mail_followers/mail_thread | v0.9.11 |
+| 37 | **Anzeige „Tenant" → „Partner"** (Kap. 8.1) | Feld-Label netbox_tenant_name von „Tenant" auf „Partner" geändert; Verknüpfung CI–Partner zurückgestellt (Kundennummer in NetBox nicht hinterlegt) | v0.9.11 |
+| 38 | **Vertrags-Filter: Plan-Ist + Service-Felder** | Filter umbenannt: „Plan-Ist-Abweichung"; neu: „Abweichung Service-Felder" + Gruppierung nach beiden | v0.9.11 |
+| 39 | **Filter und Gruppierungen** | Erweiterte Filter und Gruppierungen in CI-, Vertrags- und Service-Listen | v1.0 |
 
-## ⏳ Offen (v0.9 / v0.9.1 / v0.9.2 / v0.9.4)
-
-| # | Thema | Quelle |
-|---|-------|--------|
-| 1 | **Plan/Ist-Benachrichtigung** (optional) | Aktivität/Chatter bei Abweichung – bewusst nicht umgesetzt | Kap. 4.9 |
-| 2 | **Portal** – CI-Klasse primär, Device Role als Detail | Kap. 8.9 |
-| 3 | **Chatter** funktioniert nicht richtig (Bug) | – |
-| 4 | **Tenant → Partner** umbenennen; Verknüpfung über Kundennummer Odoo–NetBox | Kap. 8.1 |
-| 5 | **Service-Voraussetzungen aus NetBox** (Kap. 8.11) – dreigeteilt: (1) Feldliste pro Leistung, (2) Indikator Grün/Rot in Verträgen, (3) Hinweise im CI-Formular | geplant |
-| 6 | **NetBox: Initial-Import** – alle CI aus NetBox holen und in Odoo anlegen | geplant |
-| 7 | **NetBox: Update bei Änderungen** – Mechanismus (Webhook/Cron), der bei NetBox-Änderungen Odoo aktualisiert | geplant |
-| 8 | **Filter und Gruppierungen** – erweiterte Nutzerunterstützung in Listen (CI, Verträge, Services) | geplant |
-
-### Status NetBox & Services (Überblick)
+### Status NetBox (bereits vorhanden)
 
 **Bereits vorhanden:**
 - NetBox-Schnittstelle: manueller Abruf pro CI (Button „Hole von NetBox“)
 - REST-API-Anbindung, Felderübernahme (Name, Rolle, Tenant, Serial, Hardware-Typ, …)
 - CI-Anlage mit NetBox-ID; Device-Role-Mapping → CI-Klasse
 
-**Geplant (ToDo):**
-
-| Bereich | Thema | Kurzbeschreibung |
-|---------|-------|------------------|
-| NetBox | **Initial-Import** | Alle Devices aus NetBox abrufen und als CI in Odoo anlegen (Bulk-Import) |
-| NetBox | **Update bei Änderungen** | Mechanismus, der bei Änderungen in NetBox ein Update in Odoo auslöst (Webhook, periodischer Abgleich o. Ä.) |
-| NetBox/CI | **CI–Kunde / Partner** | Zuordnung CI zu Kunde prüfen (in NetBox vorhanden?); evtl. Odoo-Kundennummer in NetBox gepflegt → Verknüpfung herstellen (vgl. Tenant → Partner) |
-| Services | **Service-Voraussetzungen** | Kap. 8.11: (1) Feldliste pro Leistung mit Häkchen, (2) Grün/Rot-Indikator in Verträgen, (3) Fehlende-Felder-Hinweise im CI-Formular + NetBox-Link |
-| UX | **Filter und Gruppierungen** | Erweiterte Filter und Gruppierungen in Listen, damit Nutzer gut unterstützt werden |
-
-### Offene Punkte – Detail (einzelnd umsetzbar, Reihenfolge nach Aufwand)
-
-| # | Thema | Aufwand | Kurzbeschreibung |
-|---|-------|---------|------------------|
-| 1 | **Plan/Ist-Benachrichtigung** (optional) | 1–2 h | Activity/Chatter bei Abweichung – optional, Sichtbarkeit bereits umgesetzt. |
-| 2 | **Portal** | ungewiss | CI-Klasse primär, Device Role als Detail. intero_net_portal zeigt aktuell keine CIs; Aufwand abhängig davon, ob nur View-Anpassung oder neues Portal-Feature nötig (4 h bis 2 Tage). |
-| 3 | **Chatter-Bug** | ungewiss | Chatter funktioniert mindestens bei CI nicht; vermutlich auch bei Vertrag und anderen Modellen – Analyse erforderlich. |
-| 4 | **Tenant → Partner** | 4–8 h | Feld „Tenant" in „Partner" umbenennen (Odoo-Schreibweise). NetBox prüfen, ob Kundennummer aus Odoo vorhanden ist; Verknüpfung CI–Partner darüber herstellen. |
-| 5a1 | **Service-Voraussetzungen 8.11.1a** | mittel | Device-Struktur aus NetBox-Schema (/api/schema/) ermitteln; Feldliste im Leistung-Formular unter „Verfügbare CI-Klassen“ anzeigen. |
-| 5a2 | **Service-Voraussetzungen 8.11.1b** | mittel | Häkchen „erforderlich“ pro Feld; Many2many/Relation; Speicherung pro Leistung. |
-| 5b | **Service-Voraussetzungen Teil 2** (Kap. 8.11.2) | mittel | Indikator Grün/Rot in Verträgen: Bei CI-Zuordnung Status „vollständig“/„unvollständig“ sichtbar (CMDB-Tab). |
-| 5c | **Service-Voraussetzungen Teil 3** (Kap. 8.11.3) | mittel | Hinweise im CI-Formular: „Leistung X: fehlende Felder [Liste]“; NetBox-Link zum Nachpflegen. |
-| 6 | **NetBox Initial-Import** | 1–2 Tage | Alle Devices aus NetBox (z. B. /api/dcim/devices/) abrufen und als CI in Odoo anlegen. Button oder Aktion in Konfiguration. |
-| 7 | **NetBox Update bei Änderungen** | 2–5 Tage | Mechanismus: Webhook (NetBox → Odoo) oder periodischer Abgleich (Cron). Bei Änderung in NetBox → Update des betroffenen CI in Odoo. |
-| 8 | **Filter und Gruppierungen** | 4–8 h | Erweiterte Filter und Gruppierungen in CI-, Vertrags- und Service-Listen für bessere Nutzerunterstützung. |
+**Weitere NetBox-Ideen:** siehe [FEATURE-LIST.md](FEATURE-LIST.md)
 
 ### Lösungsvorschlag: CI-Zuordnung nur für Matrix-CI-Klassen (umgesetzt v0.9.11)
 
@@ -1006,4 +975,4 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 - **CI ohne CI-Klasse (ci_class_id leer):** Nicht zuordenbar (kein Mapping Device Role → CI-Klasse).
 - **Bestehende Zuordnungen:** Bereits zugeordnete CI mit „fremder" CI-Klasse bleiben bestehen; Constraint verhindert nur neue Zuordnungen. Optional: manuelle Bereinigung oder Migrations-Hinweis.
 
-**Empfohlener Einstieg:** Punkt 1 (Plan/Ist-Vergleich Hinweis) oder Punkt 3 (CI-Zuordnung).
+**Nächste Ideen:** siehe [FEATURE-LIST.md](FEATURE-LIST.md).

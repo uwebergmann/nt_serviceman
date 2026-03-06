@@ -77,7 +77,7 @@ class ConfigurationItem(models.Model):
         help="Leitet sich aus dem Mapping Device Role → CI-Klasse ab.",
     )
     netbox_tenant_name = fields.Char(
-        string="Tenant",
+        string="Partner",
         readonly=True,
     )
     netbox_created = fields.Datetime(

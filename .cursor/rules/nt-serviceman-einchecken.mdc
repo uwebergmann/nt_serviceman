@@ -1,0 +1,43 @@
+---
+description: NT:ServiceMan – Regeln zum Einchecken (Git Commit)
+globs: "**"
+alwaysApply: false
+---
+
+# Einchecken NT:ServiceMan
+
+Gilt beim Committen, Pushen und Erstellen von Pull Requests.
+
+## Vor dem Commit
+
+- [ ] Keine Debug-Ausgaben, temporäre TODOs oder auskommentierter Code
+- [ ] Bei fachlichen Änderungen: Pflichtenheft oder Feature-Liste aktualisiert, wenn nötig
+- [ ] Modul lokal getestet (Odoo-Update, relevante Szenarien)
+
+## Commit-Nachrichten
+
+- **Kurz und aussagekräftig** – erste Zeile max. ~72 Zeichen
+- **Präfix** (optional): `fix:`, `feat:`, `refactor:`, `docs:` für Klarheit
+- **Deutsch oder Englisch** – einheitlich im Projekt
+
+**Beispiele:**
+```
+feat: Filter "Plan-Ist-Abweichung" in Vertragsliste
+fix: Chatter-Darstellung in CI-Formular
+docs: Kap. 8.9 in Feature-Liste verschoben
+```
+
+## Erweiterte Beschreibung
+
+- Zweite Zeile leer, danach ggf. Begründung oder Bezug (z. B. „Kap. 4.9“, „Feature-Liste #2“)
+- Keine generischen Texte wie „Änderungen“ oder „Update“
+
+## Copyright in Commit-Nachrichten
+
+Jede Commit-Nachricht enthält als letzte Zeile:
+```
+Copyright: Uwe Bergmann; NETHINKS GmbH (TT.MM.JJJJ)
+```
+TT.MM.JJJJ = aktuelles Datum bei Erstellung des Commits.
+
+- **Kein Cursor-Meta:** Keine Hinweise wie „Made-with: Cursor“, „Co-authored-by: Cursor“ oder ähnliche Tool-Attributionen.

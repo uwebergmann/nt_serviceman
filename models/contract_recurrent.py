@@ -26,9 +26,15 @@ class ContractRecurrent(models.Model):
     )
     vertragsabweichung = fields.Boolean(
         compute="_compute_vertragsabweichung",
-        string="Vertragsabweichung",
+        string="Plan-Ist-Abweichung",
         store=True,
         help="True, wenn in mindestens einer CI-Klasse-Zeile Plan- und Ist-Menge abweichen.",
+    )
+    service_fields_incomplete = fields.Boolean(
+        compute="_compute_service_fields_incomplete",
+        string="Abweichung Service-Felder",
+        store=True,
+        help="True, wenn mindestens ein CI fehlende NetBox-Felder für gebuchte Leistungen hat.",
     )
 
     @api.depends(
@@ -41,6 +47,17 @@ class ContractRecurrent(models.Model):
         for contract in self:
             lines = contract.ci_class_matrix_line_ids
             contract.vertragsabweichung = any(l.quantity_deviation != 0 for l in lines)
+
+    @api.depends(
+        "configuration_item_ids",
+        "configuration_item_ids.service_fields_status",
+    )
+    def _compute_service_fields_incomplete(self):
+        for contract in self:
+            contract.service_fields_incomplete = any(
+                c.service_fields_status == "warning"
+                for c in contract.configuration_item_ids
+            )
     ci_class_matrix_archived_banner = fields.Html(
         compute="_compute_ci_class_matrix_archived_banner",
         string="Archivierte Leistungen Hinweis",
