@@ -17,7 +17,7 @@
   - `_prepare_contract_default_values()` → Basisdaten (name, term, invoice_period, …)
   - `_prepare_contract_contingent_values()` → Contingents aus `product.contingent_ids` werden kopiert
   - `_prepare_consumption_values()` → Verbrauchsdaten (falls vorhanden)
-- **Leistungsmatrix:** aktuell nicht vorgesehen → Vertrag startet mit leerer Matrix
+- **Leistungsmatrix:** vorgesehen → siehe etwas weiter unten.
 
 ### Angebot → Vertrag
 

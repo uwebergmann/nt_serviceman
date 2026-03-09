@@ -1,0 +1,26 @@
+ENDNUTZER-LIZENZVEREINBARUNG (EULA) - NT:ServiceMan
+
+1. Lizenzgewährung
+Mit dem Erwerb dieser Lizenz erhält der Kunde ein nicht übertragbares, nicht exklusives Recht zur Nutzung der Software "NT:ServiceMan" auf:
+- einem Produktivsystem und
+- einem Staging- oder Testsystem.
+
+2. Weitergabe
+Die Weitergabe der Software – ganz oder in Teilen – an Dritte ist nicht gestattet.
+
+3. SaaS-Hosting
+SaaS-Hosting ist erlaubt, sofern pro Kunde bzw. pro Instanz eine eigene Lizenz erworben wurde.
+
+4. Eigentumsrechte
+Die Software bleibt geistiges Eigentum der NETHINKS GmbH. Eine Dekompilierung, Rückentwicklung oder Veränderung des Codes ist nicht gestattet.
+
+5. Updates & Support
+Updates und technischer Support sind nicht Bestandteil dieser Lizenz und können separat vertraglich vereinbart werden.
+
+6. Haftungsausschluss
+Die Nutzung erfolgt auf eigenes Risiko. Es wird keine Haftung für direkte oder indirekte Schäden übernommen.
+
+7. Gerichtsstand und anzuwendendes Recht
+Es gilt ausschließlich deutsches Recht. Gerichtsstand ist Fulda, Deutschland.
+
+© NETHINKS GmbH
