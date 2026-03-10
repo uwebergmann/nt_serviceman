@@ -1,8 +1,8 @@
 # Pflichtenheft  
-## NT:ServiceMan v1.0 – CI-Abbildung in Odoo mit NetBox-REST-Anbindung
+## NT:ServiceMan v1.1 – CI-Abbildung in Odoo mit NetBox-REST-Anbindung
 
 **Projekt:** NT:ServiceMan  
-**Version:** 1.0 (erreicht)  
+**Version:** 1.1 (in Bearbeitung)  
 **Status:** Pflichtenheft  
 **Ziel:** Startfähigkeit herstellen, fachliche/technische Ebenen trennen  
 **Nicht-Ziel:** Vollständige Automatisierung
@@ -195,6 +195,9 @@ Vgl. Abschnitt 2.6. Ergänzend:
 - Die Architektur muss spätere Automatisierung **ohne Bruch** erlauben.
 
 ---
+
+<!-- section 7 -->
+
 ## 7. Systemkonfiguration
 
 Zur Anbindung von NetBox wird in Odoo eine zentrale Systemkonfiguration eingeführt.
@@ -334,6 +337,7 @@ Der Chatter (Nachrichten, Aktivitäten, Änderungshistorie) wird nur für ausgew
 | cmdb_id | Integer | manuell | Legacy CMDB-ID (Abwärtskompatibilität); optional | v0.9.1 |
 | contract_id | Many2one | Zuordnung | Vertrag (contract.recurrent); CI gehört genau einem Vertrag | v0.9.1 |
 | contract_service_ids | Many2many | Kopie | Gebuchte Leistungen – Kopie aus Vertrags-Leistungsmatrix (Kap. 11.3); keine Verlinkung | v0.9.3 |
+| active | Boolean | System | Aktiv/Archiviert; archivierte CI (in NetBox gelöscht) werden nie gelöscht, nur deaktiviert | v1.1 |
 
 ### 8.2 Feldregeln
 
@@ -724,6 +728,42 @@ Fehler führen nicht zum Löschen oder Überschreiben bestehender Daten.
 
 ---
 
+### 9.4 Sync aller CI aus NetBox (v1.1)
+
+**Ziel:** Alle Devices aus NetBox abrufen und als CI in Odoo anlegen bzw. aktualisieren – nicht nur einzelne CI per Button „Hole von NetBox“.
+
+**Auslöser:** Button „Alle CI holen“ im Config-Formular (Einstellungen NT:ServiceMan), unter NetBox-Synchronisation.
+
+**Endpoint:** `/api/dcim/devices/` (Liste mit Paginierung, alle Seiten werden abgerufen).
+
+**Inkremental-Sync (Delta):** Ab dem zweiten Lauf wird nur nach geänderten Devices gefragt, um die Laufzeit zu verkürzen:
+
+- NetBox unterstützt den Filter `last_updated__gte=<ISO8601-Timestamp>`.
+- Der Zeitpunkt des letzten erfolgreichen Syncs wird in `ir.config_parameter` gespeichert (`nt_serviceman.netbox_last_sync_all_timestamp`).
+- Beim nächsten Lauf: `GET /api/dcim/devices/?last_updated__gte=<letzter_sync>` – nur geänderte Devices werden abgerufen.
+- **Einschränkung:** NetBox setzt `last_updated` am Device nicht fort, wenn sich nur Child-Objekte (z. B. Interfaces) ändern. Bei reinen Device-Änderungen funktioniert der Filter zuverlässig.
+- **Vollabgleich:** Wenn kein gespeicherter Zeitpunkt vorhanden ist (erster Lauf) oder „Vollabgleich“ angefordert wird, erfolgt ein vollständiger Abruf ohne Filter. Nur dann wird die Archivierung (in NetBox entfernte CI) erkannt.
+
+**Regeln:**
+
+| Regel | Verhalten |
+|-------|-----------|
+| **Bestehende CI** | Update nur, wenn sich etwas geändert hat (Sync-Logik: Feld leer oder NetBox jünger → Aktualisierung) |
+| **Nichts löschen** | CI werden niemals physisch gelöscht |
+| **In NetBox entfernt** | CI, die in der NetBox-Liste nicht mehr vorkommen, werden lokal **archiviert** (`active=False`) – nur bei Vollabgleich erkennbar |
+| **Neu in NetBox** | Werden als neue CI angelegt |
+| **Archivierte CI reaktivieren** | Wenn ein zuvor archiviertes CI wieder in NetBox erscheint, wird es reaktiviert (`active=True`) und aktualisiert |
+
+**Technik:** Analog zu Device Roles (Kap. 8.5): Upsert-Logik über `netbox_id`; `netbox_last_updated` steuert die Sync-Entscheidung.
+
+**Rückmeldung:** Nach dem Sync wird eine Browser-Benachrichtigung angezeigt mit:
+- Anzahl neu angelegter CI
+- Anzahl aktualisierter CI
+- Anzahl archivierter CI (bei Vollabgleich)
+- Anzahl aktiver CI in Odoo (gesamt)
+
+---
+
 ## 11. Vertragskopplung
 
 Ein Vertrag enthält zwei Ebenen (vgl. Abschnitt 2.2):
@@ -944,6 +984,9 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | 37 | **Anzeige „Tenant" → „Partner"** (Kap. 8.1) | Feld-Label netbox_tenant_name von „Tenant" auf „Partner" geändert; Verknüpfung CI–Partner zurückgestellt (Kundennummer in NetBox nicht hinterlegt) | v0.9.11 |
 | 38 | **Vertrags-Filter: Plan-Ist + Service-Felder** | Filter umbenannt: „Plan-Ist-Abweichung"; neu: „Abweichung Service-Felder" + Gruppierung nach beiden | v0.9.11 |
 | 39 | **Filter und Gruppierungen** | Erweiterte Filter und Gruppierungen in CI-, Vertrags- und Service-Listen | v1.0 |
+| 40 | **active am CI** (Kap. 8.1) | CI archivierbar (active=False); für in NetBox gelöschte Geräte | v1.1 |
+| 41 | **Alle CI holen** (Kap. 9.4) | Button im Config-Formular; holt alle Devices von /api/dcim/devices/ (mit Paginierung); Upsert + Archivieren | v1.1 |
+| 42 | **Delta-Sync + Notification** (Kap. 9.4) | Inkremental-Sync mit last_updated__gte; Benachrichtigung: X neu, Y aktualisiert, Z archiviert, N aktive CI; Vollabgleich-Button für Archivierung | v1.1 |
 
 ### Status NetBox (bereits vorhanden)
 

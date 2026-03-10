@@ -13,20 +13,52 @@
         <field name="arch" type="xml">
             <form string="Einstellungen NT:ServiceMan">
                 <sheet>
-                    <group string="NetBox-Anbindung">
-                        <field name="netbox_base_url" placeholder="https://netbox.example.com"/>
-                        <field name="netbox_api_token" password="True" placeholder="API-Token aus NetBox: My Account → API Tokens"/>
-                        <div class="mt16">
-                            <button name="action_test_netbox_url" type="object" string="Test URL" class="btn-secondary"/>
-                        </div>
-                        <field name="netbox_test_result" nolabel="1" placeholder="Klicken Sie auf 'Test URL', um die Verbindung zu prüfen."/>
-                        <div class="mt16">
+                    <group string="NetBox-Anbindung" col="2">
+                        <group>
+                            <field name="netbox_base_url" placeholder="https://netbox.example.com"/>
+                            <field name="netbox_api_token" password="True" placeholder="API-Token aus NetBox: My Account → API Tokens"/>
+                            <div class="d-flex align-items-start gap-2" style="flex-wrap: wrap;">
+                                <button name="action_test_netbox_url" type="object"
+                                        string="Test URL" class="btn-primary flex-shrink-0"/>
+                                <field name="netbox_test_result" nolabel="1" placeholder="Klicken Sie auf 'Test URL', um die Verbindung zu prüfen."
+                                       class="flex-grow-1" style="min-width: 15em; white-space: pre-wrap;"/>
+                            </div>
+                        </group>
+                    </group>
+                    <group string="NetBox-Synchronisation" col="4" class="mt16">
+                        <group col="1">
                             <button name="action_fetch_device_roles_from_netbox" type="object"
-                                    string="Device Roles von NetBox abrufen" class="btn-primary"/>
+                                    string="Hole Device Roles" class="btn btn-primary"/>
+                        </group>
+                        <group col="3">
+                            <p class="text-muted mb-0" style="min-width: 20em;">
+                                Lädt alle Device Roles aus NetBox und aktualisiert die bestehende Liste.
+                                Bestehende Zuordnungen zu CI-Klassen bleiben unverändert erhalten.
+                            </p>
+                        </group>
+                        <group col="1">
+                            <button name="action_sync_all_cis_from_netbox" type="object"
+                                    string="Alle CI holen" class="btn btn-secondary"/>
+                            <button name="action_sync_all_cis_full_from_netbox" type="object"
+                                    string="Vollabgleich" class="btn btn-outline-secondary"/>
+                        </group>
+                        <group col="3">
+                            <p class="text-muted mb-0" style="min-width: 20em;">
+                                Holt alle Geräte von NetBox. Neue anlegen, bestehende aktualisieren,
+                                entfernte archivieren (nie löschen). „Alle CI holen“ nutzt Inkremental-Sync (nur Änderungen); „Vollabgleich“ holt alles und erkennt Archivierung.
+                            </p>
+                        </group>
+                        <group col="1">
                             <button name="action_refresh_netbox_device_fields" type="object"
-                                    string="Device-Felder aus Schema laden" class="btn-secondary"
-                                    help="Lädt die Device-Struktur aus dem NetBox-OpenAPI-Schema (Kap. 8.11.1a)."/>
-                        </div>
+                                    string="CI-Felder holen" class="btn btn-primary"/>
+                        </group>
+                        <group col="3">
+                            <p class="text-muted mb-0" style="min-width: 20em;">
+                                Lädt alle Gerätefelder aus dem NetBox-Schema und stellt sie als Auswahlliste
+                                in den Leistungen bereit. So legen Sie fest, welche NetBox-Felder für eine Leistung
+                                ausgefüllt sein müssen.
+                            </p>
+                        </group>
                     </group>
                 </sheet>
             </form>

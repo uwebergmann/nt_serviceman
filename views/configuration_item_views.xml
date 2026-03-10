@@ -11,17 +11,15 @@
         <field name="name">nt_serviceman.configuration_item.tree</field>
         <field name="model">nt_serviceman.configuration_item</field>
         <field name="arch" type="xml">
-            <tree string="Configuration Items">
+            <tree string="Configuration Items" delete="false">
                 <field name="name"/>
-                <field name="cmdb_id"/>
-                <field name="netbox_id"/>
+                <field name="netbox_tenant_name" string="Partner"/>
                 <field name="contract_id"/>
                 <field name="contract_service_ids" string="Gebuchte Leistungen" widget="many2many_tags" optional="hide"/>
-                <field name="netbox_display"/>
                 <field name="netbox_serial"/>
                 <field name="netbox_device_type"/>
                 <field name="netbox_role_id"/>
-                <field name="netbox_role_netbox_id"/>
+                <field name="ci_class_id" string="CI-Klasse"/>
             </tree>
         </field>
     </record>
@@ -32,6 +30,7 @@
         <field name="arch" type="xml">
             <form string="Configuration Item">
                 <sheet>
+                    <field name="show_debug_json" invisible="1"/>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Wird aus NetBox übernommen"/></h1>
                     </div>
@@ -70,7 +69,7 @@
                     <group string="Service-Voraussetzungen" col="1" attrs="{'invisible': [('contract_id', '=', False)]}" class="mt16">
                         <field name="fehlende_felder_html" nolabel="1" readonly="1"/>
                     </group>
-                    <group string="Debug (Roh-JSON)" class="mt16">
+                    <group string="Debug (Roh-JSON)" class="mt16" attrs="{'invisible': [('show_debug_json', '=', False)]}">
                         <div class="o_netbox_raw_json">
                             <field name="netbox_raw_response" nolabel="1"
                                    placeholder="Rohes JSON-Ergebnis erscheint hier nach Klick auf 'Hole NetBox-Item'."/>
@@ -101,6 +100,9 @@
                 <field name="contract_service_ids"/>
                 <filter string="Unzugeordnet" name="no_contract"
                         domain="[('contract_id', '=', False)]"/>
+                <filter string="Archivierte / Inaktive" name="archived"
+                        domain="[('active', '=', False)]"
+                        context="{'active_test': False}"/>
                 <group expand="0" string="Gruppieren nach">
                     <filter string="Vertrag" name="group_contract" context="{'group_by': 'contract_id'}"/>
                     <filter string="Gebuchte Leistung" name="group_service" context="{'group_by': 'contract_service_ids'}"/>

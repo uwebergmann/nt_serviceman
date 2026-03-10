@@ -15,6 +15,7 @@ from odoo.exceptions import UserError
 # Keys für ir.config_parameter
 NETBOX_BASE_URL_KEY = "nt_serviceman.netbox_base_url"
 NETBOX_API_TOKEN_KEY = "nt_serviceman.netbox_api_token"
+NETBOX_LAST_SYNC_ALL_KEY = "nt_serviceman.netbox_last_sync_all_timestamp"
 NETBOX_DEVICE_FIELD_NAMES_KEY = "nt_serviceman.netbox_device_field_names"
 NETBOX_DEVICE_SAMPLE_KEY = "nt_serviceman.netbox_device_sample"
 
@@ -191,6 +192,18 @@ class NTServiceManConfig(models.Model):
         """Ruft alle Device Roles von NetBox ab."""
         self.ensure_one()
         return self.env["nt_serviceman.netbox_device_role"].action_fetch_from_netbox()
+
+    def action_sync_all_cis_from_netbox(self, force_full=False):
+        """Holt alle CI von NetBox (Kap. 9.4). Delta-Sync wenn möglich."""
+        self.ensure_one()
+        return self.env["nt_serviceman.configuration_item"].with_context(
+            force_full_sync=force_full
+        ).action_sync_all_from_netbox()
+
+    def action_sync_all_cis_full_from_netbox(self):
+        """Vollabgleich: Alle CI holen, inkl. Archivierung (Kap. 9.4)."""
+        self.ensure_one()
+        return self.action_sync_all_cis_from_netbox(force_full=True)
 
     @api.model
     def _get_netbox_device_field_names(self):
