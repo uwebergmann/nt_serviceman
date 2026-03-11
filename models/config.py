@@ -125,7 +125,7 @@ class NTServiceManConfig(models.Model):
         return url, token
 
     def _validate_netbox_url(self, url):
-        """Prüft URL gegen SSRF: nur http(s), gültiger Host, keine lokalen/privaten Hosts (Kap. 7.2.1)."""
+        """Prüft URL gegen SSRF: nur http(s), gültiger Host, keine loopback/link-local Hosts (Kap. 7.2.1)."""
         raw = (url or "").strip()
         if not raw:
             return False, "Keine URL angegeben."
@@ -144,8 +144,8 @@ class NTServiceManConfig(models.Model):
             return False, "Lokale und reservierte IP-Adressen sind nicht erlaubt."
         try:
             addr = ipaddress.ip_address(host)
-            if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
-                return False, "Private, loopback- und link-local Adressen sind aus Sicherheitsgründen nicht erlaubt."
+            if addr.is_loopback or addr.is_link_local:
+                return False, "Loopback- und link-local Adressen sind aus Sicherheitsgründen nicht erlaubt."
         except ValueError:
             pass
         if "@" in parsed.netloc or ".." in raw or "\x00" in raw:
@@ -186,7 +186,8 @@ class NTServiceManConfig(models.Model):
             return False, _("Antwort ist kein JSON – vermutlich kein NetBox.")
         if not isinstance(data, dict):
             return False, _("Unerwartetes API-Format.")
-        if not any(k in data for k in ("apps", "routers", "schema", "types")):
+        # NetBox root /api/ liefert Endpunkte wie dcim, ipam, circuits, extras, …
+        if not any(k in data for k in ("dcim", "ipam", "circuits", "extras", "tenancy", "virtualization")):
             return False, _("API-Struktur nicht eindeutig NetBox-typisch.")
         if token and r_api.status_code == 401:
             return False, _("API-Token ungültig oder abgelaufen.")
