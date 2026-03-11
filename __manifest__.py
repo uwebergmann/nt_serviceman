@@ -8,7 +8,7 @@
 
 {
     "name": "NT:ServiceMan",
-    "version": "1.0.2",
+    "version": "1.2.0",
     "author": "NETHINKS GmbH",
     "summary": "Abbildung von Configuration Items (CI) aus NetBox, Vertragszuordnung",
     "category": "Services",
@@ -22,6 +22,7 @@
         "data/ci_class_data.xml",
         "data/service_data.xml",
         "data/ir_actions_server_data.xml",
+        "data/ir_cron_full_sync.xml",
         "views/config_views.xml",
         "views/service_views.xml",
         "views/ci_class_views.xml",

@@ -306,7 +306,7 @@ Der Chatter (Nachrichten, Aktivitäten, Änderungshistorie) wird nur für ausgew
 | nt_serviceman.configuration_item | Modell | Ja |
 | nt_serviceman.ci_class | Modell | Ja |
 | nt_serviceman.service | Modell | Ja |
-| nt_serviceman.config | Modell | Nein |
+| nt_serviceman.config | Modell | Ja (ab v1.2: für Log-Einträge geplanter Vollabgleich, Kap. 9.5) |
 | nt_serviceman.netbox_device_role | Modell | Nein |
 | nt_serviceman.contract_ci_class_matrix_line | Modell | Nein |
 | nt_serviceman.product_ci_class_matrix_line | Modell | Nein |
@@ -764,6 +764,32 @@ Fehler führen nicht zum Löschen oder Überschreiben bestehender Daten.
 
 ---
 
+### 9.5 Geplanter Vollabgleich (Cron) – v1.2
+
+**Ziel:** Der Vollabgleich (Kap. 9.4) läuft regelmäßig im Hintergrund, ohne manuelle Auslösung. So werden Änderungen in NetBox (inkl. verschachtelter Objekte wie Tenant) zuverlässig nach Odoo übernommen.
+
+**Auslöser:** Geplante Aktion (`ir.cron`), Standard-Intervall **täglich** (z. B. 02:00). Der Intervall ist in Odoo unter Einstellungen → Technisch → Geplante Aktionen änderbar.
+
+**Technik:**
+- Button „Vollabgleich“ und Cron-Job rufen dieselbe Sync-Funktion auf – einheitliche Logik.
+- **Testen ohne Cron:** Wenn der Cron-Job deaktiviert ist (z. B. in Stage), kann der Vollabgleich über den Button „Vollabgleich“ in den Einstellungen getestet werden; die gleiche Funktion wird ausgeführt.
+- Ergebnis wird in `ir.config_parameter` gespeichert: Zeitpunkt, Status (ok/failed), Fehlermeldung, optional Statistiken.
+- Im Einstellungsformular: Anzeige „Letzter Vollabgleich“ (Zeitpunkt, Status, Fehler falls vorhanden).
+
+**Chatter am Config-Formular:**
+- Das Modell `nt_serviceman.config` erhält Chatter (mail.thread).
+- Nach jedem geplanten Lauf wird eine **Log-Nachricht** im Chatter der Einstellungen erstellt:
+  - Erfolg: „Vollabgleich abgeschlossen: X neu, Y aktualisiert, Z archiviert.“
+  - Fehler: „Vollabgleich fehlgeschlagen: [Fehlermeldung].“
+- So ist der Verlauf der geplanten Läufe direkt in den Einstellungen nachvollziehbar.
+
+**Fehlerbehandlung:**
+- Bei Fehler: Eintrag in Config-Parametern, Log im Chatter, Exception wird weitergegeben.
+- Die Cron-Option „Bei Fehlern E-Mail senden“ kann aktiviert werden; Empfänger in Odoo konfigurierbar.
+- Optional: Aktivität für NT:ServiceMan Admin bei Fehlschlag.
+
+---
+
 ## 11. Vertragskopplung
 
 Ein Vertrag enthält zwei Ebenen (vgl. Abschnitt 2.2):
@@ -987,6 +1013,7 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | 40 | **active am CI** (Kap. 8.1) | CI archivierbar (active=False); für in NetBox gelöschte Geräte | v1.1 |
 | 41 | **Alle CI holen** (Kap. 9.4) | Button im Config-Formular; holt alle Devices von /api/dcim/devices/ (mit Paginierung); Upsert + Archivieren | v1.1 |
 | 42 | **Delta-Sync + Notification** (Kap. 9.4) | Inkremental-Sync mit last_updated__gte; Benachrichtigung: X neu, Y aktualisiert, Z archiviert, N aktive CI; Vollabgleich-Button für Archivierung | v1.1 |
+| 43 | **Geplanter Vollabgleich** (Kap. 9.5) | ir.cron täglich; Chatter am Config für Log-Einträge; Vollabgleich-Button und Cron nutzen dieselbe Funktion (Test ohne Cron möglich) | v1.2 |
 
 ### Status NetBox (bereits vorhanden)
 

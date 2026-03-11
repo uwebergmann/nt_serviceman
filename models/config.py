@@ -9,13 +9,16 @@ from urllib.parse import urlparse
 
 import requests
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 # Keys für ir.config_parameter
 NETBOX_BASE_URL_KEY = "nt_serviceman.netbox_base_url"
 NETBOX_API_TOKEN_KEY = "nt_serviceman.netbox_api_token"
 NETBOX_LAST_SYNC_ALL_KEY = "nt_serviceman.netbox_last_sync_all_timestamp"
+NETBOX_LAST_FULL_SYNC_AT_KEY = "nt_serviceman.netbox_last_full_sync_at"
+NETBOX_LAST_FULL_SYNC_STATE_KEY = "nt_serviceman.netbox_last_full_sync_state"
+NETBOX_LAST_FULL_SYNC_ERROR_KEY = "nt_serviceman.netbox_last_full_sync_error"
 NETBOX_DEVICE_FIELD_NAMES_KEY = "nt_serviceman.netbox_device_field_names"
 NETBOX_DEVICE_SAMPLE_KEY = "nt_serviceman.netbox_device_sample"
 
@@ -23,9 +26,11 @@ NETBOX_DEVICE_SAMPLE_KEY = "nt_serviceman.netbox_device_sample"
 class NTServiceManConfig(models.Model):
     """Globale Konfiguration für NT:ServiceMan (NetBox-Anbindung).
     URL und Token werden in ir.config_parameter gespeichert.
+    Chatter: Log-Einträge geplanter Vollabgleich (Kap. 9.5).
     """
 
     _name = "nt_serviceman.config"
+    _inherit = ["mail.thread", "mail.activity.mixin"]
     _description = "NT:ServiceMan Konfiguration"
 
     netbox_base_url = fields.Char(
@@ -47,6 +52,33 @@ class NTServiceManConfig(models.Model):
         readonly=True,
         help="Ergebnis des NetBox-URL-Tests.",
     )
+    last_full_sync_at = fields.Datetime(
+        string="Letzter Vollabgleich",
+        compute="_compute_last_full_sync",
+        help="Zeitpunkt des letzten geplanten Vollabgleichs.",
+    )
+    last_full_sync_state = fields.Char(
+        string="Status Vollabgleich",
+        compute="_compute_last_full_sync",
+        help="ok oder failed.",
+    )
+    last_full_sync_error = fields.Text(
+        string="Fehler Vollabgleich",
+        compute="_compute_last_full_sync",
+        help="Fehlermeldung falls letzter Lauf fehlgeschlagen.",
+    )
+
+    @api.depends()
+    def _compute_last_full_sync(self):
+        """Liest aus ir.config_parameter (Kap. 9.5)."""
+        icp = self.env["ir.config_parameter"].sudo()
+        at_val = icp.get_param(NETBOX_LAST_FULL_SYNC_AT_KEY, "")
+        state_val = icp.get_param(NETBOX_LAST_FULL_SYNC_STATE_KEY, "")
+        error_val = icp.get_param(NETBOX_LAST_FULL_SYNC_ERROR_KEY, "") or ""
+        for rec in self:
+            rec.last_full_sync_at = at_val if at_val else False
+            rec.last_full_sync_state = state_val or ""
+            rec.last_full_sync_error = error_val
 
     def name_get(self):
         return [(r.id, "Einstellungen NT:ServiceMan") for r in self]
@@ -201,9 +233,95 @@ class NTServiceManConfig(models.Model):
         ).action_sync_all_from_netbox()
 
     def action_sync_all_cis_full_from_netbox(self):
-        """Vollabgleich: Alle CI holen, inkl. Archivierung (Kap. 9.4)."""
+        """Vollabgleich: Ruft run_scheduled_full_sync (dieselbe Logik wie Cron),
+        schreibt Chatter + Status, zeigt Browser-Notification."""
         self.ensure_one()
-        return self.action_sync_all_cis_from_netbox(force_full=True)
+        try:
+            result = self.run_scheduled_full_sync()
+        except Exception as e:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("NetBox-Fehler"),
+                    "message": str(e),
+                    "type": "danger",
+                    "sticky": True,
+                },
+            }
+
+        parts = []
+        if result["created"]:
+            parts.append(_("%s CI neu") % result["created"])
+        if result["updated"]:
+            parts.append(_("%s aktualisiert") % result["updated"])
+        if result["archived"]:
+            parts.append(_("%s archiviert") % result["archived"])
+        parts.append(_("%s aktive CI in Odoo") % result["active_count"])
+
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("CI abgerufen"),
+                "message": "; ".join(parts),
+                "type": "success",
+                "sticky": False,
+                "next": self.env.ref("nt_serviceman.action_configuration_item").id,
+            },
+        }
+
+    @api.model
+    def run_scheduled_full_sync(self):
+        """Vollabgleich (Cron + Button, Kap. 9.5). Sync, speichert Status, postet Chatter.
+        Returns result dict on success, raises on error."""
+        Config = self.env["nt_serviceman.config"].sudo()
+        config = Config.search([], limit=1)
+        if not config:
+            config = Config.create({})
+
+        ci_model = self.env["nt_serviceman.configuration_item"].sudo()
+        icp = self.env["ir.config_parameter"].sudo()
+        now_str = fields.Datetime.now()
+
+        try:
+            result = ci_model._run_sync_all_from_netbox(force_full=True)
+            icp.set_param(NETBOX_LAST_FULL_SYNC_AT_KEY, now_str)
+            icp.set_param(NETBOX_LAST_FULL_SYNC_STATE_KEY, "ok")
+            icp.set_param(NETBOX_LAST_FULL_SYNC_ERROR_KEY, "")
+
+            msg = _(
+                "Vollabgleich abgeschlossen: %s neu, %s aktualisiert, %s archiviert; %s aktive CI in Odoo."
+            ) % (
+                result["created"],
+                result["updated"],
+                result["archived"],
+                result["active_count"],
+            )
+            config.message_post(
+                body=msg,
+                message_type="comment",
+                subtype_xmlid="mail.mt_note",
+            )
+            config.invalidate_cache(
+                fnames=["last_full_sync_at", "last_full_sync_state", "last_full_sync_error"]
+            )
+            return result
+
+        except Exception as e:
+            icp.set_param(NETBOX_LAST_FULL_SYNC_AT_KEY, now_str)
+            icp.set_param(NETBOX_LAST_FULL_SYNC_STATE_KEY, "failed")
+            icp.set_param(NETBOX_LAST_FULL_SYNC_ERROR_KEY, str(e))
+
+            config.message_post(
+                body=_("Vollabgleich fehlgeschlagen: %s") % str(e),
+                message_type="comment",
+                subtype_xmlid="mail.mt_note",
+            )
+            config.invalidate_cache(
+                fnames=["last_full_sync_at", "last_full_sync_state", "last_full_sync_error"]
+            )
+            raise
 
     @api.model
     def _get_netbox_device_field_names(self):

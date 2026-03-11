@@ -13,7 +13,7 @@ import markupsafe
 import requests
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 from .config import NETBOX_LAST_SYNC_ALL_KEY
 
@@ -533,110 +533,112 @@ class ConfigurationItem(models.Model):
             )
 
     @api.model
-    def action_sync_all_from_netbox(self):
-        """Holt alle Devices von NetBox, legt/aktualisiert CI an, archiviert entferntere.
-        Pflichtenheft Kap. 9.4. Delta-Sync mit last_updated__gte wenn möglich."""
+    def _run_sync_all_from_netbox(self, force_full=False):
+        """Kernlogik Sync aller CI (Kap. 9.4/9.5). Returns dict or raises.
+        Für Button und Cron; beide rufen diese Methode auf."""
         base_url, token = self.env["nt_serviceman.config"].sudo()._get_netbox_params()
 
         if not base_url:
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": _("Fehler"),
-                    "message": _("Keine NetBox-URL konfiguriert."),
-                    "type": "danger",
-                    "sticky": False,
-                },
-            }
+            raise UserError(_("Keine NetBox-URL konfiguriert."))
 
         headers = {}
         if token:
             headers["Authorization"] = f"Token {token}"
 
-        force_full = self.env.context.get("force_full_sync", False)
         icp = self.env["ir.config_parameter"].sudo()
         last_sync_str = icp.get_param(NETBOX_LAST_SYNC_ALL_KEY, "").strip() or None
 
-        # Vollabgleich: kein last_sync oder force_full
         do_full_sync = force_full or not last_sync_str
         url = f"{base_url}/api/dcim/devices/"
         if not do_full_sync and last_sync_str:
-            # NetBox erwartet ISO8601; Odoo speichert "YYYY-MM-DD HH:MM:SS" (UTC)
             netbox_ts = last_sync_str.replace(" ", "T") + "Z"
             url = f"{url}?last_updated__gte={netbox_ts}"
 
         created = updated = archived = 0
         netbox_ids_seen = set()
 
-        try:
-            while url:
-                r = requests.get(url, headers=headers, timeout=30, verify=False)
-                r.raise_for_status()
-                data = r.json()
+        while url:
+            r = requests.get(url, headers=headers, timeout=30, verify=False)
+            r.raise_for_status()
+            data = r.json()
 
-                for item in data.get("results", []):
-                    nb_id = item.get("id")
-                    if nb_id is None:
-                        continue
-                    nb_id_str = str(nb_id)
-                    netbox_ids_seen.add(nb_id_str)
-                    nb_last_updated = self._parse_netbox_datetime(item.get("last_updated"))
+            for item in data.get("results", []):
+                nb_id = item.get("id")
+                if nb_id is None:
+                    continue
+                nb_id_str = str(nb_id)
+                netbox_ids_seen.add(nb_id_str)
+                nb_last_updated = self._parse_netbox_datetime(item.get("last_updated"))
 
-                    existing = self.sudo().with_context(active_test=False).search(
-                        [("netbox_id", "=", nb_id_str)], limit=1
-                    )
-                    if existing:
-                        do_update = False
-                        if not existing.netbox_last_updated:
+                existing = self.sudo().with_context(active_test=False).search(
+                    [("netbox_id", "=", nb_id_str)], limit=1
+                )
+                if existing:
+                    do_update = False
+                    if not existing.netbox_last_updated:
+                        do_update = True
+                    elif nb_last_updated:
+                        nb_dt = fields.Datetime.from_string(nb_last_updated)
+                        local_dt = fields.Datetime.from_string(
+                            existing.netbox_last_updated
+                        )
+                        if nb_dt > local_dt:
                             do_update = True
-                        elif nb_last_updated:
-                            nb_dt = fields.Datetime.from_string(nb_last_updated)
-                            local_dt = fields.Datetime.from_string(
-                                existing.netbox_last_updated
-                            )
-                            if nb_dt > local_dt:
-                                do_update = True
 
-                        if do_update:
-                            existing._extract_netbox_fields(item)
-                            vals = {
-                                "netbox_last_sync": fields.Datetime.now(),
-                                "netbox_sync_state": "ok",
-                                "netbox_sync_error": False,
-                            }
-                            if not existing.active:
-                                vals["active"] = True
-                            existing.sudo().write(vals)
-                            updated += 1
-                    else:
-                        new_ci = self.sudo().create({"netbox_id": nb_id_str})
-                        new_ci._extract_netbox_fields(item)
-                        new_ci.sudo().write({
+                    if do_update:
+                        existing._extract_netbox_fields(item)
+                        vals = {
                             "netbox_last_sync": fields.Datetime.now(),
                             "netbox_sync_state": "ok",
                             "netbox_sync_error": False,
-                        })
-                        created += 1
+                        }
+                        if not existing.active:
+                            vals["active"] = True
+                        existing.sudo().write(vals)
+                        updated += 1
+                else:
+                    new_ci = self.sudo().create({"netbox_id": nb_id_str})
+                    new_ci._extract_netbox_fields(item)
+                    new_ci.sudo().write({
+                        "netbox_last_sync": fields.Datetime.now(),
+                        "netbox_sync_state": "ok",
+                        "netbox_sync_error": False,
+                    })
+                    created += 1
 
-                url = data.get("next")
-                if url and not url.startswith("http"):
-                    url = f"{base_url}{url}" if url.startswith("/") else None
+            url = data.get("next")
+            if url and not url.startswith("http"):
+                url = f"{base_url}{url}" if url.startswith("/") else None
 
-            # Archivieren: nur bei Vollabgleich (wir haben dann die volle ID-Liste)
-            if do_full_sync and netbox_ids_seen:
-                obsolete = self.sudo().with_context(active_test=False).search([
-                    ("netbox_id", "not in", list(netbox_ids_seen)),
-                    ("active", "=", True),
-                ])
-                if obsolete:
-                    obsolete.sudo().write({"active": False})
-                    archived = len(obsolete)
+        if do_full_sync and netbox_ids_seen:
+            obsolete = self.sudo().with_context(active_test=False).search([
+                ("netbox_id", "not in", list(netbox_ids_seen)),
+                ("active", "=", True),
+            ])
+            if obsolete:
+                obsolete.sudo().write({"active": False})
+                archived = len(obsolete)
 
-            # Zeitpunkt für nächsten Delta-Sync speichern
-            icp.set_param(NETBOX_LAST_SYNC_ALL_KEY, fields.Datetime.now())
+        icp.set_param(NETBOX_LAST_SYNC_ALL_KEY, fields.Datetime.now())
+        active_count = self.sudo().search_count([("active", "=", True)])
 
-        except requests.RequestException as e:
+        return {
+            "created": created,
+            "updated": updated,
+            "archived": archived,
+            "active_count": active_count,
+        }
+
+    @api.model
+    def action_sync_all_from_netbox(self):
+        """Holt alle Devices von NetBox (Kap. 9.4). Button: ruft _run_sync_all_from_netbox, zeigt Notification."""
+        try:
+            result = self.with_context(
+                force_full_sync=self.env.context.get("force_full_sync", False)
+            )._run_sync_all_from_netbox(
+                force_full=self.env.context.get("force_full_sync", False)
+            )
+        except (UserError, requests.RequestException) as e:
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",
@@ -648,23 +650,21 @@ class ConfigurationItem(models.Model):
                 },
             }
 
-        active_count = self.sudo().search_count([("active", "=", True)])
         parts = []
-        if created:
-            parts.append(_("%s CI neu") % created)
-        if updated:
-            parts.append(_("%s aktualisiert") % updated)
-        if archived:
-            parts.append(_("%s archiviert") % archived)
-        parts.append(_("%s aktive CI in Odoo") % active_count)
-        message = "; ".join(parts)
+        if result["created"]:
+            parts.append(_("%s CI neu") % result["created"])
+        if result["updated"]:
+            parts.append(_("%s aktualisiert") % result["updated"])
+        if result["archived"]:
+            parts.append(_("%s archiviert") % result["archived"])
+        parts.append(_("%s aktive CI in Odoo") % result["active_count"])
 
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
                 "title": _("CI abgerufen"),
-                "message": message,
+                "message": "; ".join(parts),
                 "type": "success",
                 "sticky": False,
                 "next": self.env.ref("nt_serviceman.action_configuration_item").id,

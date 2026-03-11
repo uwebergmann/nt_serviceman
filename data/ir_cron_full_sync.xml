@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    © NETHINKS GmbH – Alle Rechte vorbehalten
+    Geplanter Vollabgleich NetBox → Odoo (Kap. 9.5 Pflichtenheft)
+-->
+<odoo>
+    <data noupdate="1">
+        <record id="ir_cron_nt_serviceman_full_sync" model="ir.cron">
+            <field name="name">NT:ServiceMan – Vollabgleich NetBox CI</field>
+            <field name="model_id" ref="model_nt_serviceman_config"/>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="nextcall">2025-01-01 02:00:00</field>
+            <field name="state">code</field>
+            <field name="code">model.run_scheduled_full_sync()</field>
+            <field name="active" eval="True"/>
+            <field name="doall" eval="False"/>
+        </record>
+    </data>
+</odoo>
