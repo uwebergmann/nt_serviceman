@@ -41,3 +41,7 @@ Copyright: Uwe Bergmann; NETHINKS GmbH (TT.MM.JJJJ)
 TT.MM.JJJJ = aktuelles Datum bei Erstellung des Commits.
 
 - **Kein Cursor-Meta:** Keine Hinweise wie „Made-with: Cursor“, „Co-authored-by: Cursor“ oder ähnliche Tool-Attributionen.
+
+## Vereinbarung: Commit-Befehl nicht ausführen
+
+**Der Commit-Befehl wird nicht im Cursor-Terminal ausgeführt.** Stattdessen wird der vollständige Befehl (inkl. Commit-Nachricht) zum Kopieren bereitgestellt. Der Nutzer führt den Commit in eigenem Terminal aus – damit wird vermieden, dass Cursor automatisch „Made-with: Cursor" einfügt.

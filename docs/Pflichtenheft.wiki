@@ -283,22 +283,29 @@ Der Chatter (Nachrichten, Aktivitäten, Änderungshistorie) wird nur für ausgew
 
 ==== 8.1 Pflichtfelder ====
 
-^Feld                ^Typ           ^Herkunft ^Beschreibung                                                                              ^Status^
-|netbox_id           |Integer / Char|manuell  |ID des Devices in NetBox                                                                  |✓     |
-|netbox_name         |Char          |NetBox   |Name des Geräts (über name/netbox_display)                                                |✓     |
-|netbox_role_id      |Many2one      |NetBox   |Relation auf netbox.device_role; ersetzt netbox_role_name (v0.9.1)                        |v0.9.1|
-|netbox_tenant_name  |Char          |NetBox   |Tenant / Kunde                                                                            |✓     |
-|netbox_url          |Char          |NetBox   |Link (Anzeigename klickbar → display_url)                                                 |✓     |
-|netbox_created      |Datetime      |NetBox   |Erstellungszeitpunkt aus NetBox (readonly)                                                |✓     |
-|netbox_last_updated |Datetime      |NetBox   |Letzte Änderung aus NetBox (readonly); steuert Sync-Logik                                 |✓     |
-|netbox_last_sync    |Datetime      |System   |Zeitpunkt letzter Abruf                                                                   |✓     |
-|netbox_sync_state   |Selection     |System   |ok / failed                                                                               |✓     |
-|netbox_sync_error   |Text          |System   |Fehlermeldung (nur bei Fehler sichtbar)                                                   |✓     |
-|ci_class_id         |Many2one      |Mapping  |CI-Klasse (via Role-Mapping, v0.9.1)                                                      |v0.9.1|
-|cmdb_id             |Integer       |manuell  |Legacy CMDB-ID (Abwärtskompatibilität); optional                                          |v0.9.1|
-|contract_id         |Many2one      |Zuordnung|Vertrag (contract.recurrent); CI gehört genau einem Vertrag                               |v0.9.1|
-|contract_service_ids|Many2many     |Kopie    |Gebuchte Leistungen – Kopie aus Vertrags-Leistungsmatrix (Kap. 11.3); keine Verlinkung    |v0.9.3|
-|active              |Boolean       |System   |Aktiv/Archiviert; archivierte CI (in NetBox gelöscht) werden nie gelöscht, nur deaktiviert|v1.1  |
+^Feld                   ^Typ           ^Herkunft^Beschreibung                                                       ^Status^
+|netbox_id              |Integer / Char|manuell |ID des Devices in NetBox                                           |✓     |
+|netbox_name            |Char          |NetBox  |Name des Geräts (über name/netbox_display)                         |✓     |
+|netbox_role_id         |Many2one      |NetBox  |Relation auf netbox.device_role; ersetzt netbox_role_name (v0.9.1) |v0.9.1|
+|netbox_tenant_name     |Char          |NetBox  |Tenant / Kunde                                                     |✓     |
+|netbox_url             |Char          |NetBox  |Link (Anzeigename klickbar → display_url)                          |✓     |
+|netbox_created         |Datetime      |NetBox  |Erstellungszeitpunkt aus NetBox (readonly)                         |✓     |
+|netbox_last_updated    |Datetime      |NetBox  |Letzte Änderung aus NetBox (readonly); steuert Sync-Logik          |✓     |
+|netbox_last_sync       |Datetime      |System  |Zeitpunkt letzter Abruf                                            |✓     |
+|netbox_sync_state      |Selection     |System  |ok / failed                                                        |✓     |
+|netbox_sync_error      |Text          |System  |Fehlermeldung (nur bei Fehler sichtbar)                            |✓     |
+|netbox_manufacturer    |Char          |NetBox  |Hersteller (device_type.manufacturer.name); für CPE/CVE            |✓     |
+|netbox_model           |Char          |NetBox  |Modell (device_type.model); für CPE/CVE                            |✓     |
+|netbox_firmware_version|Char          |NetBox  |Firmware-Version (custom_fields.firmware_version o.ä.); für CPE/CVE|✓     |
+|ci_class_id            |Many2one      |Mapping |CI-Klasse (via Role-Mapping, v0.9.1)                               |v0.9.1|
+|cmdb_id                |Integer       |manuell |Legacy CMDB-ID (Abwärtskompatibilität); optional                   |v0.9.1|
+
+contract_id | Many2one | Zuordnung | Vertrag (contract.recurrent); CI gehört genau einem Vertrag | v0.9.1 |\\
+contract_service_ids | Many2many | Kopie | Gebuchte Leistungen – Kopie aus Vertrags-Leistungsmatrix (Kap. 11.3); keine Verlinkung | v0.9.3 |\\
+active | Boolean | System | Aktiv/Archiviert; archivierte CI (in NetBox gelöscht) werden nie gelöscht, nur deaktiviert | v1.1 |
+
+**Hinweis zu netbox_manufacturer, netbox_model, netbox_firmware_version:**\\
+Diese drei Felder werden in ''%%_extract_netbox_fields()%%'' aus dem NetBox-Device-JSON übernommen. Sie sind Voraussetzung für die CPE-String-Erzeugung (CVE-Monitoring, nt_cve-automatisation). Die Firmware-Version kommt aus ''%%custom_fields%%''; **fehlt sie in NetBox, bleibt das Feld leer – das Programm wird nicht behindert.** CPE kann auch ohne Version gebaut werden (z.B. mit ''%%*%%'').
 
 ==== 8.2 Feldregeln ====
 
@@ -893,11 +900,12 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 40 | **active am CI** (Kap. 8.1) | CI archivierbar (active=False); für in NetBox gelöschte Geräte | v1.1 |\\
 41 | **Alle CI holen** (Kap. 9.4) | Button im Config-Formular; holt alle Devices von /api/dcim/devices/ (mit Paginierung); Upsert + Archivieren | v1.1 |\\
 42 | **Delta-Sync + Notification** (Kap. 9.4) | Inkremental-Sync mit last_updated%%__%%gte; Benachrichtigung: X neu, Y aktualisiert, Z archiviert, N aktive CI; Vollabgleich-Button für Archivierung | v1.1 |\\
-43 | **Geplanter Vollabgleich** (Kap. 9.5) | ir.cron täglich; Chatter am Config für Log-Einträge; Vollabgleich-Button und Cron nutzen dieselbe Funktion (Test ohne Cron möglich) | v1.2 |
+43 | **Geplanter Vollabgleich** (Kap. 9.5) | ir.cron täglich; Chatter am Config für Log-Einträge; Vollabgleich-Button und Cron nutzen dieselbe Funktion (Test ohne Cron möglich) | v1.2 |\\
+44 | **CPE-Felder am CI** (Kap. 8.1) | netbox_manufacturer, netbox_model, netbox_firmware_version aus NetBox; Voraussetzung für CVE-Monitoring (nt_cve-automatisation) | v1.2.2 |
 
 ==== Status NetBox (bereits vorhanden) ====
 
-**Bereits vorhanden:** - NetBox-Schnittstelle: manueller Abruf pro CI (Button „Hole von NetBox“) - REST-API-Anbindung, Felderübernahme (Name, Rolle, Tenant, Serial, Hardware-Typ, …) - CI-Anlage mit NetBox-ID; Device-Role-Mapping → CI-Klasse
+**Bereits vorhanden:** - NetBox-Schnittstelle: manueller Abruf pro CI (Button „Hole von NetBox“) - REST-API-Anbindung, Felderübernahme (Name, Rolle, Tenant, Serial, Hardware-Typ, Hersteller, Modell, Firmware-Version, …) - CI-Anlage mit NetBox-ID; Device-Role-Mapping → CI-Klasse
 
 **Weitere NetBox-Ideen:** siehe FEATURE-LIST.md
 

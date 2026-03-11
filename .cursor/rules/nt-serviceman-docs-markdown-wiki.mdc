@@ -32,3 +32,15 @@ sed 's/^---$/----/' README.md | pandoc -t dokuwiki -o README.wiki
 
 - `sed 's/^---$/----/'` ersetzt horizontale Trennlinien (`---`), damit pandoc sie nicht als YAML-Frontmatter-Begrenzer interpretiert.
 - DokuWiki nutzt `----` für horizontale Linien.
+
+## Pandoc-Blockgrenzen
+
+Falls ein Abschnitt fälschlich als Riesen-Tabelle ausgegeben wird, fehlt eine klare Blocktrennung. **Abhilfe:** HTML-Kommentar vor der betroffenen Überschrift einfügen:
+
+```markdown
+---
+<!-- section 7 -->
+## 7. Systemkonfiguration
+```
+
+Der Kommentar zwingt Pandoc zu einer neuen Blockgrenze; er erscheint nicht im Wiki.

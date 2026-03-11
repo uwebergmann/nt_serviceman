@@ -80,6 +80,21 @@ class ConfigurationItem(models.Model):
         string="Hardware-Typ",
         readonly=True,
     )
+    netbox_manufacturer = fields.Char(
+        string="Hersteller",
+        readonly=True,
+        help="Aus device_type.manufacturer.name (NetBox); für CPE/CVE.",
+    )
+    netbox_model = fields.Char(
+        string="Modell",
+        readonly=True,
+        help="Aus device_type.model (NetBox); für CPE/CVE.",
+    )
+    netbox_firmware_version = fields.Char(
+        string="Firmware-Version",
+        readonly=True,
+        help="Aus custom_fields (NetBox); für CPE/CVE. Bleibt leer, falls nicht in NetBox gepflegt – blockiert nichts.",
+    )
     netbox_role_id = fields.Many2one(
         "nt_serviceman.netbox_device_role",
         string="NetBox Device Role",
@@ -431,7 +446,7 @@ class ConfigurationItem(models.Model):
                 )
 
     def _extract_netbox_fields(self, data):
-        """Extrahiert Anzeigename, Serial, Hardware-Typ, Rolle, Tenant und Timestamps aus NetBox-JSON."""
+        """Extrahiert Anzeigename, Serial, Hardware-Typ, Rolle, Tenant, CPE-Felder und Timestamps aus NetBox-JSON."""
         data = data or {}
         display = data.get("display") or ""
         self.netbox_display = display
@@ -441,6 +456,17 @@ class ConfigurationItem(models.Model):
         self.netbox_serial = data.get("serial") or ""
         device_type = data.get("device_type") or {}
         self.netbox_device_type = device_type.get("display") or device_type.get("model") or ""
+        manufacturer = device_type.get("manufacturer") or {}
+        self.netbox_manufacturer = manufacturer.get("name") if isinstance(manufacturer, dict) else ""
+        self.netbox_model = device_type.get("model") or ""
+        # Firmware-Version: optional; mehrere Custom-Field-Namen probiert; leer = kein Blockieren
+        custom_fields = data.get("custom_fields") or {}
+        self.netbox_firmware_version = (
+            custom_fields.get("firmware_version")
+            or custom_fields.get("version")
+            or custom_fields.get("software_version")
+            or ""
+        )
         role = data.get("role") or data.get("device_role")
         role_nb_id = None
         if isinstance(role, dict):

@@ -51,6 +51,9 @@
                             <field name="netbox_display_link" string="NetBox-Link"/>
                             <field name="netbox_serial"/>
                             <field name="netbox_device_type"/>
+                            <field name="netbox_manufacturer"/>
+                            <field name="netbox_model"/>
+                            <field name="netbox_firmware_version"/>
                             <field name="netbox_role_id" string="Rolle im DCIM"/>
                             <field name="netbox_role_netbox_id" attrs="{'invisible': [('netbox_role_id', '=', False)]}"/>
                             <field name="netbox_tenant_name"/>

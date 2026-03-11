@@ -22,8 +22,6 @@
                               decoration-success="service_fields_status == 'ok'"
                               decoration-warning="service_fields_status == 'warning'">
                             <field name="service_fields_status" column_invisible="1"/>
-                            <field name="service_fields_status_icon" string=""/>
-                            <field name="cmdb_id"/>
                             <field name="name"/>
                             <field name="ci_class_id"/>
                             <field name="netbox_role_id"/>

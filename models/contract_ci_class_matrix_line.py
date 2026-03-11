@@ -52,7 +52,7 @@ class ContractCIClassMatrixLine(models.Model):
         "nt_serviceman_contract_matrix_service_rel",
         "matrix_line_id",
         "service_id",
-        string="Buchbare Leistungen",
+        string="Gebuchte Leistungen",
         context={"active_test": False},
         help="Leistungen, die für diese Klasse gebucht werden können. "
              "Archivierte bleiben sichtbar, sind aber nicht mehr neu buchbar.",
