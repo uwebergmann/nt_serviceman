@@ -43,7 +43,20 @@ class ConfigurationItem(models.Model):
         string="Name",
         help="Wird bei 'Hole NetBox-Item' automatisch aus dem Anzeigenamen übernommen.",
     )
-    netbox_id = fields.Char(string="NetBox-ID")
+    netbox_id = fields.Char(
+        string="NetBox-ID",
+        help="Nur Ziffern erlaubt (NetBox Device-ID ist numerisch, Kap. 8.2).",
+    )
+
+    @api.constrains("netbox_id")
+    def _check_netbox_id_digits_only(self):
+        for rec in self:
+            if rec.netbox_id and not rec.netbox_id.strip().isdigit():
+                raise ValidationError(
+                    _("NetBox-ID darf nur Ziffern enthalten. Ungültiger Wert: %s")
+                    % rec.netbox_id
+                )
+
     netbox_display = fields.Char(
         string="Anzeigename",
         readonly=True,

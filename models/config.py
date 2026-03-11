@@ -4,13 +4,14 @@
 # Speicherort: ir.config_parameter (Kap. 7.2 Pflichtenheft)
 # -----------------------------------------------------------------------------
 
+import ipaddress
 import json
 from urllib.parse import urlparse
 
 import requests
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 # Keys für ir.config_parameter
 NETBOX_BASE_URL_KEY = "nt_serviceman.netbox_base_url"
@@ -94,10 +95,20 @@ class NTServiceManConfig(models.Model):
             rec.netbox_api_token = token
 
     def _inverse_netbox_base_url(self):
-        """Speichert URL in ir.config_parameter."""
+        """Speichert URL in ir.config_parameter. Validiert und führt Test vor dem Speichern aus (Kap. 7.2.1)."""
         icp = self.env["ir.config_parameter"].sudo()
         for rec in self:
-            icp.set_param(NETBOX_BASE_URL_KEY, (rec.netbox_base_url or "").strip())
+            url = (rec.netbox_base_url or "").strip()
+            if not url:
+                icp.set_param(NETBOX_BASE_URL_KEY, "")
+                continue
+            valid, err = rec._validate_netbox_url(url)
+            if not valid:
+                raise ValidationError(_("NetBox-URL: %s") % err)
+            success, err_msg = rec._run_netbox_url_test(url.rstrip("/"))
+            if not success:
+                raise ValidationError(_("NetBox-URL-Test fehlgeschlagen: %s") % err_msg)
+            icp.set_param(NETBOX_BASE_URL_KEY, url)
 
     def _inverse_netbox_api_token(self):
         """Speichert Token in ir.config_parameter."""
@@ -114,32 +125,40 @@ class NTServiceManConfig(models.Model):
         return url, token
 
     def _validate_netbox_url(self, url):
-        """Prüft URL gegen SSRF: nur http(s), gültiger Host."""
-        raw = (url or '').strip()
+        """Prüft URL gegen SSRF: nur http(s), gültiger Host, keine lokalen/privaten Hosts (Kap. 7.2.1)."""
+        raw = (url or "").strip()
         if not raw:
             return False, "Keine URL angegeben."
         parsed = urlparse(raw)
-        if parsed.scheme not in ('http', 'https'):
+        if parsed.scheme not in ("http", "https"):
             return False, "Nur http:// und https:// URLs erlaubt."
         if not parsed.netloc:
             return False, "Ungültige URL (kein Host)."
+        host = parsed.hostname or parsed.netloc.split(":")[0] or ""
+        if not host:
+            return False, "Ungültige URL (kein Host)."
+        host_lower = host.lower()
+        if host_lower in ("localhost", "0.0.0.0", "::1", ""):
+            return False, "Lokale Hosts (localhost, 127.x, ::1, 0.0.0.0) sind aus Sicherheitsgründen nicht erlaubt."
+        if host_lower.startswith("127.") or host_lower.startswith("0."):
+            return False, "Lokale und reservierte IP-Adressen sind nicht erlaubt."
+        try:
+            addr = ipaddress.ip_address(host)
+            if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+                return False, "Private, loopback- und link-local Adressen sind aus Sicherheitsgründen nicht erlaubt."
+        except ValueError:
+            pass
+        if "@" in parsed.netloc or ".." in raw or "\x00" in raw:
+            return False, "URL enthält ungültige oder potenziell gefährliche Zeichen."
         return True, None
 
-    def action_test_netbox_url(self):
-        """Prüft NetBox-URL: (1) Server erreichbar, (2) NetBox erkannt, (3) REST-API."""
-        self.ensure_one()
-        base_url = (self.netbox_base_url or '').strip().rstrip('/')
-        lines = []
-
+    def _run_netbox_url_test(self, base_url):
+        """Prüft NetBox-URL: Server erreichbar, REST-API, NetBox-Struktur. Returns (success, error_msg)."""
         if not base_url:
-            self.netbox_test_result = "❌ Keine NetBox-URL konfiguriert."
-            return
-
+            return False, "Keine NetBox-URL angegeben."
         valid, err = self._validate_netbox_url(base_url)
         if not valid:
-            self.netbox_test_result = f"❌ {err}"
-            return
-
+            return False, err or "Ungültige URL."
         kwargs = {"timeout": 10, "verify": False}
         token = (self.netbox_api_token or "").strip()
         if token:
@@ -147,77 +166,59 @@ class NTServiceManConfig(models.Model):
         try:
             requests.get(base_url, **kwargs)
         except requests.ConnectionError:
-            self.netbox_test_result = (
-                "❌ 1. Server nicht erreichbar (Verbindung fehlgeschlagen). "
-                "Prüfen Sie: https (nicht http)? Odoo-Server im gleichen Netz?"
-            )
-            return
+            return False, _("Server nicht erreichbar (Verbindung fehlgeschlagen).")
         except requests.exceptions.SSLError as e:
-            self.netbox_test_result = (
-                f"❌ 1. SSL-Fehler (z.B. selbstsigniertes Zertifikat): {e}"
-            )
-            return
+            return False, _("SSL-Fehler (z.B. selbstsigniertes Zertifikat): %s") % e
         except requests.Timeout:
-            self.netbox_test_result = "❌ 1. Server nicht erreichbar (Timeout)."
-            return
+            return False, _("Server nicht erreichbar (Timeout).")
         except requests.RequestException as e:
-            self.netbox_test_result = f"❌ 1. Server-Fehler: {type(e).__name__}: {e}"
-            return
-
-        lines.append("✅ 1. Server erreichbar.")
-
+            return False, f"{type(e).__name__}: {e}"
         api_url = f"{base_url}/api/"
         try:
             r_api = requests.get(api_url, **kwargs)
         except requests.RequestException as e:
-            msg = f"❌ 2. REST-API nicht erreichbar: {type(e).__name__}: {e}"
-            self.netbox_test_result = f"{lines[0]}\n{msg}"
-            return
-
+            return False, _("REST-API nicht erreichbar: %s") % e
         if r_api.status_code not in (200, 401, 403):
-            self.netbox_test_result = (
-                f"{lines[0]}\n❌ 2. REST-API antwortet mit {r_api.status_code} – "
-                "kein NetBox-/api/-Endpoint oder Fehler."
-            )
-            return
-
-        lines.append("✅ 2. REST-API antwortet.")
-
+            return False, _("REST-API antwortet mit %s – kein NetBox-/api/-Endpoint.") % r_api.status_code
         try:
             data = r_api.json()
         except ValueError:
-            self.netbox_test_result = (
-                f"{lines[0]}\n{lines[1]}\n❌ 3. Antwort ist kein JSON – "
-                "vermutlich kein NetBox."
-            )
-            return
-
+            return False, _("Antwort ist kein JSON – vermutlich kein NetBox.")
         if not isinstance(data, dict):
-            self.netbox_test_result = (
-                f"{lines[0]}\n{lines[1]}\n⚠️ 3. Unerwartetes Format – "
-                "möglicherweise kein NetBox."
-            )
+            return False, _("Unerwartetes API-Format.")
+        if not any(k in data for k in ("apps", "routers", "schema", "types")):
+            return False, _("API-Struktur nicht eindeutig NetBox-typisch.")
+        if token and r_api.status_code == 401:
+            return False, _("API-Token ungültig oder abgelaufen.")
+        if token and r_api.status_code == 403:
+            return False, _("API-Token hat keine Berechtigung.")
+        return True, None
+
+    def action_test_netbox_url(self):
+        """Prüft NetBox-URL: (1) Server erreichbar, (2) NetBox erkannt, (3) REST-API."""
+        self.ensure_one()
+        base_url = (self.netbox_base_url or "").strip().rstrip("/")
+        if not base_url:
+            self.netbox_test_result = "❌ Keine NetBox-URL konfiguriert."
             return
-
-        if any(k in data for k in ('apps', 'routers', 'schema', 'types')):
-            lines.append("✅ 3. NetBox-API-Struktur erkannt.")
-        else:
-            lines.append(
-                "⚠️ 3. API-Struktur nicht eindeutig NetBox-typisch "
-                "(aber JSON vorhanden)."
-            )
-
+        valid, err = self._validate_netbox_url(base_url)
+        if not valid:
+            self.netbox_test_result = f"❌ {err}"
+            return
+        success, err_msg = self._run_netbox_url_test(base_url)
+        if not success:
+            self.netbox_test_result = f"❌ {err_msg}"
+            return
+        token = (self.netbox_api_token or "").strip()
+        lines = [
+            "✅ 1. Server erreichbar.",
+            "✅ 2. REST-API antwortet.",
+            "✅ 3. NetBox-API-Struktur erkannt.",
+        ]
         if not token:
             lines.append("⚠️ 4. Kein API-Token konfiguriert – Device-Abfragen werden fehlschlagen.")
-        elif r_api.status_code == 200:
-            lines.append("✅ 4. API-Token gültig.")
-        elif r_api.status_code == 401:
-            lines.append("❌ 4. API-Token ungültig oder abgelaufen.")
-        elif r_api.status_code == 403:
-            lines.append("❌ 4. API-Token hat keine Berechtigung.")
         else:
-            lines.append(f"⚠️ 4. API-Token: unerwarteter Status {r_api.status_code}.")
-
+            lines.append("✅ 4. API-Token gültig.")
         self.netbox_test_result = "\n".join(lines)
 
     def action_fetch_device_roles_from_netbox(self):

@@ -1,9 +1,9 @@
 ====== Pflichtenheft ======
 
-===== NT:ServiceMan v0.9 – CI-Abbildung in Odoo mit NetBox-REST-Anbindung =====
+===== NT:ServiceMan v1.1 – CI-Abbildung in Odoo mit NetBox-REST-Anbindung =====
 
 **Projekt:** NT:ServiceMan\\
-**Version:** 0.9 / 0.9.1 / 0.9.2 (Leistungen, Matrix Verfügbarkeit) / 0.9.4 (Leistungsmatrix am Produkt)\\
+**Version:** 1.1 (in Bearbeitung)\\
 **Status:** Pflichtenheft\\
 **Ziel:** Startfähigkeit herstellen, fachliche/technische Ebenen trennen\\
 **Nicht-Ziel:** Vollständige Automatisierung
@@ -74,7 +74,7 @@ Keine Server-, Storage- oder generischen IT-Klassen.
 
 Pro Vertrag: - Planmenge je Geräteklasse - Ist-Menge = Anzahl aktiver CI je Klasse
 
-Bei Abweichung: - Hinweis an Vertrieb (Aktivität / Chatter) - keine automatische Preisänderung - Preisänderungen erfolgen ausschließlich manuell
+Bei Abweichung: - keine automatische Preisänderung - Preisänderungen erfolgen ausschließlich manuell
 
 **Ziel:** Transparenz ohne automatische Vertragsmutation.
 
@@ -131,7 +131,7 @@ Die Version gilt als erfolgreich umgesetzt, wenn:
     * Tenant-Name
   - Mehrere CI können **einem wiederkehrenden Vertrag** zugeordnet werden.
   - Die zugeordneten **reale CI** sind als Liste im Vertrag sichtbar.
-  - **Plan/Ist-Vergleich** (Planmenge vs. Anzahl CI je Geräteklasse) ist möglich; bei Abweichung Hinweis an Vertrieb (Aktivität/Chatter).
+  - **Plan/Ist-Vergleich** (Planmenge vs. Anzahl CI je Geräteklasse) ist möglich.
 
 
 ----
@@ -154,72 +154,155 @@ Vgl. Abschnitt 2.6. Ergänzend:
   * Änderungen an NetBox-Daten erfolgen ausschließlich in NetBox.
   * Die Architektur muss spätere Automatisierung **ohne Bruch** erlauben.
 
-|## 7. Systemkonfiguration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-|Zur Anbindung von NetBox wird in Odoo eine zentrale Systemkonfiguration eingeführt. Diese Konfiguration ist **nicht CI-spezifisch**, sondern gilt systemweit.                                                                                                                                                                                                                                                                                                                                                                                                               |
-|### 7.0 Benutzeroberfläche (Konfiguration)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-|Unter **NT:ServiceMan > Konfiguration** werden folgende Bereiche bereitgestellt (alle nur für NT:ServiceMan Admin):                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-|**Einstellungen** (NetBox-Anbindung):                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-|| Feld | Typ | Beschreibung | |——————|——–|—————————————————| | **NetBox-URL** | Text | Basis-URL der NetBox-Instanz (z.B. https:%%//%%netbox.example.com) | | **Test URL** | Button | Prüft die Verbindung: (1) Server erreichbar, (2) REST-API antwortet, (3) NetBox-API-Struktur erkannt | | **Test-Ergebnis**| Text | Ausgabe des URL-Tests (readonly) |                                                                                                                                                                                                                 |
-|**Leistungen** (v0.9.2): Editierbare Liste der erbringbaren Leistungen; vgl. Kap. 8.7.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-|**Leistung pro Geräteklasse** (v0.9.2): Konfiguration, welche Leistung für welche CI-Klasse verfügbar ist; vgl. Kap. 8.8. Die Zuordnung erfolgt im CI-Klasse-Formular.                                                                                                                                                                                                                                                                                                                                                                                                      |
-|**CI-Klassen** (Kap. 8.4): Geräteklassen (Firewall, Switch, Router, Access Point) konfigurieren und mit Device Roles verknüpfen.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-|**Device Roles** (Kap. 8.5): NetBox Device Roles anzeigen; Menüpunkt „Device Roles von NetBox abrufen” zum Abruf aus NetBox.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-|**Hinweis:** Das frühere Untermenü „Daten” wurde entfernt; CI-Klassen und Device Roles sind vollständig in die Konfiguration verschoben. Änderungen sollen nur von Administratoren (NT:ServiceMan Admin) vorgenommen werden.                                                                                                                                                                                                                                                                                                                                                |
-|Zugriff auf alle Konfigurationsbereiche nur für **NT:ServiceMan Admin**.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-|### 7.0.1 Menüsichtbarkeit und Benutzerzugriff                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-|Es gelten genau drei Rollen:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-|- **NT:ServiceMan Admin** - **NT:ServiceMan Nutzer** - **alle anderen Benutzer** (keine der beiden Gruppen)                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-|**Berechtigungsmatrix:**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-|- **NT:ServiceMan Admin:** Vollzugriff auf die komplette App (inkl. Konfiguration und aller Buttons/Aktionen).                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-|- **NT:ServiceMan Nutzer:** Zugriff auf operative Menüs und Formulare (z.B. **CI-Einträge**), inklusive Bedienung der Buttons in den Formularen (z.B. **„Hole von NetBox”** am CI). **Kein Zugriff** auf das Menü **Konfiguration** und dessen Unterpunkte (Einstellungen, Leistungen, CI-Klassen, Device Roles).                                                                                                                                                                                                                                                           |
-|- **alle anderen Benutzer:** **Kein Zugriff** auf NT:ServiceMan (keine App-Kachel, keine Menüs, keine Modelle).                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-|### 7.1 Konfigurationsparameter NetBox                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-|Folgende Konfigurationsparameter werden benötigt:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-|| Parameter | Typ | Beschreibung | |———|—-|————–| | netbox_base_url | URL | Basis-URL der NetBox-Instanz (z. B. https:%%//%%netbox.example.com) | | netbox_api_token | Secret | API-Token zur Authentifizierung gegen die NetBox-REST-API |                                                                                                                                                                                                                                                                                                                                 |
-|Die vollständige REST-URL für den Abruf eines Devices ergibt sich aus:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-|''%%{netbox_base_url}/api/dcim/devices/{netbox_id}/%%''                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-|### 7.2 Ablageort der Konfiguration (v0.9.10 umgesetzt)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-|Die Konfigurationsparameter (NetBox-URL, API-Token) werden als **Systemparameter** in ''%%ir.config_parameter%%'' gespeichert (Keys: ''%%nt_serviceman.netbox_base_url%%'', ''%%nt_serviceman.netbox_api_token%%'').                                                                                                                                                                                                                                                                                                                                                        |
-|Die Bedienoberfläche (NT:ServiceMan > Konfiguration > Einstellungen) bleibt unverändert; das Formular liest und schreibt transparent in ''%%ir.config_parameter%%''.                                                                                                                                                                                                                                                                                                                                                                                                        |
-|### 7.3 Rechte- und Sicherheitskonzept                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-|Der Zugriff auf NT:ServiceMan erfolgt **rollenbasiert** über die Gruppen:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-|- ''%%nt_serviceman.group_nt_serviceman_admin%%'' (NT:ServiceMan Admin) - ''%%nt_serviceman.group_nt_serviceman_user%%'' (NT:ServiceMan Nutzer)                                                                                                                                                                                                                                                                                                                                                                                                                             |
-|Die Berechtigungen sind wie folgt umzusetzen:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-|- **NT:ServiceMan Admin** - Vollzugriff auf alle NT:ServiceMan-Modelle und Menüs - exklusiver Zugriff auf **Konfiguration** (Einstellungen, Leistungen, CI-Klassen, Device Roles) - darf NetBox-URL/API-Token sehen und ändern                                                                                                                                                                                                                                                                                                                                              |
-|- **NT:ServiceMan Nutzer** - Vollzugriff auf operative NT:ServiceMan-Funktionen (**CI-Einträge** inkl. Formularaktionen wie „Hole von NetBox”) - kein Zugriff auf Konfigurationsmenü und keine Einsicht in NetBox-URL/API-Token                                                                                                                                                                                                                                                                                                                                             |
-|- **alle anderen** - kein Zugriff auf die NT:ServiceMan-App                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-|### 7.4 Änderbarkeit und Betrieb                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-|Änderungen an der NetBox-Konfiguration gelten:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-|- **global** - **sofort** - **ohne Rückwirkung auf bestehende CI**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-|Die Änderung der Konfiguration darf keinen automatischen Re-Sync aller CI auslösen.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-|### 7.5 Chatter (Odoo mail.thread)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-|Der Chatter (Nachrichten, Aktivitäten, Änderungshistorie) wird nur für ausgewählte Modelle aktiviert:                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-|| Objekt | Typ | Chatter vorhanden? | |——–|—–|——————–| | nt_serviceman.configuration_item | Modell | Ja | | nt_serviceman.ci_class | Modell | Ja | | nt_serviceman.service | Modell | Ja | | nt_serviceman.config | Modell | Nein | | nt_serviceman.netbox_device_role | Modell | Nein | | nt_serviceman.contract_ci_class_matrix_line | Modell | Nein | | nt_serviceman.product_ci_class_matrix_line | Modell | Nein | | nt_serviceman.contract_configuration_item_assign | Wizard (Transient) | – | | nt_serviceman.ci_class_device_role_assign | Wizard (Transient) | – ||
-|**Technik:** Chatter wird über ''%%_inherit = ['mail.thread']%%'' (und ggf. ''%%mail.activity.mixin%%'') realisiert. Das Modul ''%%mail%%'' muss in der Abhängigkeit (''%%depends%%'') stehen.                                                                                                                                                                                                                                                                                                                                                                              |
+
+----
+
+
+===== 7. Systemkonfiguration =====
+
+Zur Anbindung von NetBox wird in Odoo eine zentrale Systemkonfiguration eingeführt. Diese Konfiguration ist **nicht CI-spezifisch**, sondern gilt systemweit.
+
+==== 7.0 Benutzeroberfläche (Konfiguration) ====
+
+Unter **NT:ServiceMan > Konfiguration** werden folgende Bereiche bereitgestellt (alle nur für NT:ServiceMan Admin):
+
+**Einstellungen** (NetBox-Anbindung):
+
+^Feld             ^Typ   ^Beschreibung                                                                                        ^
+|**NetBox-URL**   |Text  |Basis-URL der NetBox-Instanz (z.B. https:%%//%%netbox.example.com)                                  |
+|**Test URL**     |Button|Prüft die Verbindung: (1) Server erreichbar, (2) REST-API antwortet, (3) NetBox-API-Struktur erkannt|
+|**Test-Ergebnis**|Text  |Ausgabe des URL-Tests (readonly)                                                                    |
+
+**Leistungen** (v0.9.2): Editierbare Liste der erbringbaren Leistungen; vgl. Kap. 8.7.
+
+**Leistung pro Geräteklasse** (v0.9.2): Konfiguration, welche Leistung für welche CI-Klasse verfügbar ist; vgl. Kap. 8.8. Die Zuordnung erfolgt im CI-Klasse-Formular.
+
+**CI-Klassen** (Kap. 8.4): Geräteklassen (Firewall, Switch, Router, Access Point) konfigurieren und mit Device Roles verknüpfen.
+
+**Device Roles** (Kap. 8.5): NetBox Device Roles anzeigen; Menüpunkt „Device Roles von NetBox abrufen” zum Abruf aus NetBox.
+
+**Hinweis:** Das frühere Untermenü „Daten” wurde entfernt; CI-Klassen und Device Roles sind vollständig in die Konfiguration verschoben. Änderungen sollen nur von Administratoren (NT:ServiceMan Admin) vorgenommen werden.
+
+Zugriff auf alle Konfigurationsbereiche nur für **NT:ServiceMan Admin**.
+
+==== 7.0.1 Menüsichtbarkeit und Benutzerzugriff ====
+
+Es gelten genau drei Rollen:
+
+  * **NT:ServiceMan Admin**
+  * **NT:ServiceMan Nutzer**
+  * **alle anderen Benutzer** (keine der beiden Gruppen)
+
+**Berechtigungsmatrix:**
+
+  * **NT:ServiceMan Admin:**\\
+Vollzugriff auf die komplette App (inkl. Konfiguration und aller Buttons/Aktionen).
+  * **NT:ServiceMan Nutzer:**\\
+Zugriff auf operative Menüs und Formulare (z.B. **CI-Einträge**), inklusive Bedienung der Buttons in den Formularen (z.B. **„Hole von NetBox”** am CI).\\
+**Kein Zugriff** auf das Menü **Konfiguration** und dessen Unterpunkte (Einstellungen, Leistungen, CI-Klassen, Device Roles).
+  * **alle anderen Benutzer:**\\
+**Kein Zugriff** auf NT:ServiceMan (keine App-Kachel, keine Menüs, keine Modelle).
+
+==== 7.1 Konfigurationsparameter NetBox ====
+
+Folgende Konfigurationsparameter werden benötigt:
+
+^Parameter       ^Typ   ^Beschreibung                                                       ^
+|netbox_base_url |URL   |Basis-URL der NetBox-Instanz (z. B. https:%%//%%netbox.example.com)|
+|netbox_api_token|Secret|API-Token zur Authentifizierung gegen die NetBox-REST-API          |
+
+Die vollständige REST-URL für den Abruf eines Devices ergibt sich aus:
+
+''%%{netbox_base_url}/api/dcim/devices/{netbox_id}/%%''
+
+==== 7.2 Ablageort der Konfiguration (v0.9.10 umgesetzt) ====
+
+Die Konfigurationsparameter (NetBox-URL, API-Token) werden als **Systemparameter** in ''%%ir.config_parameter%%'' gespeichert (Keys: ''%%nt_serviceman.netbox_base_url%%'', ''%%nt_serviceman.netbox_api_token%%'').
+
+Die Bedienoberfläche (NT:ServiceMan > Konfiguration > Einstellungen) bleibt unverändert; das Formular liest und schreibt transparent in ''%%ir.config_parameter%%''.
+
+==== 7.2.1 Sicherheitsanforderungen NetBox-URL (geplant v1.2) ====
+
+  * **Automatischer Test beim Speichern:** Beim Speichern der NetBox-URL wird der Test (Server erreichbar, REST-API, NetBox-Struktur, Token) automatisch ausgeführt. Nur bei erfolgreichem Test wird die URL persistiert.
+  * **Erweiterte URL-Validierung:** Der Test bzw. die Validierung lehnt URLs ab, die zu SSRF oder anderen Angriffen missbraucht werden könnten:
+    * Nur http:%%//%% und https:%%//%% erlaubt
+    * Keine lokalen Hosts (localhost, 127.x, ::1, 0.0.0.0)
+    * Keine privaten, link-local oder reservierten IP-Adressen
+    * Keine gefährlichen Zeichen (@, .., Nullbytes)
+
+==== 7.3 Rechte- und Sicherheitskonzept ====
+
+Der Zugriff auf NT:ServiceMan erfolgt **rollenbasiert** über die Gruppen:
+
+  * ''%%nt_serviceman.group_nt_serviceman_admin%%'' (NT:ServiceMan Admin)
+  * ''%%nt_serviceman.group_nt_serviceman_user%%'' (NT:ServiceMan Nutzer)
+
+Die Berechtigungen sind wie folgt umzusetzen:
+
+  * **NT:ServiceMan Admin**
+    * Vollzugriff auf alle NT:ServiceMan-Modelle und Menüs
+    * exklusiver Zugriff auf **Konfiguration** (Einstellungen, Leistungen, CI-Klassen, Device Roles)
+    * darf NetBox-URL/API-Token sehen und ändern
+  * **NT:ServiceMan Nutzer**
+    * Vollzugriff auf operative NT:ServiceMan-Funktionen (**CI-Einträge** inkl. Formularaktionen wie „Hole von NetBox”)
+    * kein Zugriff auf Konfigurationsmenü und keine Einsicht in NetBox-URL/API-Token
+  * **alle anderen**
+    * kein Zugriff auf die NT:ServiceMan-App
+
+==== 7.4 Änderbarkeit und Betrieb ====
+
+Änderungen an der NetBox-Konfiguration gelten:
+
+  * **global**
+  * **sofort**
+  * **ohne Rückwirkung auf bestehende CI**
+
+Die Änderung der Konfiguration darf keinen automatischen Re-Sync aller CI auslösen.
+
+==== 7.5 Chatter (Odoo mail.thread) ====
+
+Der Chatter (Nachrichten, Aktivitäten, Änderungshistorie) wird nur für ausgewählte Modelle aktiviert:
+
+^Objekt                                          ^Typ               ^Chatter vorhanden?                                             ^
+|nt_serviceman.configuration_item                |Modell            |Ja                                                             |
+|nt_serviceman.ci_class                          |Modell            |Ja                                                             |
+|nt_serviceman.service                           |Modell            |Ja                                                             |
+|nt_serviceman.config                            |Modell            |Ja (ab v1.2: für Log-Einträge geplanter Vollabgleich, Kap. 9.5)|
+|nt_serviceman.netbox_device_role                |Modell            |Nein                                                           |
+|nt_serviceman.contract_ci_class_matrix_line     |Modell            |Nein                                                           |
+|nt_serviceman.product_ci_class_matrix_line      |Modell            |Nein                                                           |
+|nt_serviceman.contract_configuration_item_assign|Wizard (Transient)|–                                                              |
+|nt_serviceman.ci_class_device_role_assign       |Wizard (Transient)|–                                                              |
+
+**Technik:** Chatter wird über ''%%_inherit = ['mail.thread']%%'' (und ggf. ''%%mail.activity.mixin%%'') realisiert. Das Modul ''%%mail%%'' muss in der Abhängigkeit (''%%depends%%'') stehen.
+
+
+----
 
 ===== 8. CI-Datenmodell (v0.9 – minimal) =====
 
 ==== 8.1 Pflichtfelder ====
 
-^Feld                ^Typ           ^Herkunft ^Beschreibung                                                                          ^Status^
-|netbox_id           |Integer / Char|manuell  |ID des Devices in NetBox                                                              |✓     |
-|netbox_name         |Char          |NetBox   |Name des Geräts (über name/netbox_display)                                            |✓     |
-|netbox_role_id      |Many2one      |NetBox   |Relation auf netbox.device_role; ersetzt netbox_role_name (v0.9.1)                    |v0.9.1|
-|netbox_tenant_name  |Char          |NetBox   |Tenant / Kunde                                                                        |✓     |
-|netbox_url          |Char          |NetBox   |Link (Anzeigename klickbar → display_url)                                             |✓     |
-|netbox_created      |Datetime      |NetBox   |Erstellungszeitpunkt aus NetBox (readonly)                                            |✓     |
-|netbox_last_updated |Datetime      |NetBox   |Letzte Änderung aus NetBox (readonly); steuert Sync-Logik                             |✓     |
-|netbox_last_sync    |Datetime      |System   |Zeitpunkt letzter Abruf                                                               |✓     |
-|netbox_sync_state   |Selection     |System   |ok / failed                                                                           |✓     |
-|netbox_sync_error   |Text          |System   |Fehlermeldung (nur bei Fehler sichtbar)                                               |✓     |
-|ci_class_id         |Many2one      |Mapping  |CI-Klasse (via Role-Mapping, v0.9.1)                                                  |v0.9.1|
-|cmdb_id             |Integer       |manuell  |Legacy CMDB-ID (Abwärtskompatibilität); optional                                      |v0.9.1|
-|contract_id         |Many2one      |Zuordnung|Vertrag (contract.recurrent); CI gehört genau einem Vertrag                           |v0.9.1|
-|contract_service_ids|Many2many     |Kopie    |Gebuchte Leistungen – Kopie aus Vertrags-Leistungsmatrix (Kap. 11.3); keine Verlinkung|v0.9.3|
+^Feld                ^Typ           ^Herkunft ^Beschreibung                                                                              ^Status^
+|netbox_id           |Integer / Char|manuell  |ID des Devices in NetBox                                                                  |✓     |
+|netbox_name         |Char          |NetBox   |Name des Geräts (über name/netbox_display)                                                |✓     |
+|netbox_role_id      |Many2one      |NetBox   |Relation auf netbox.device_role; ersetzt netbox_role_name (v0.9.1)                        |v0.9.1|
+|netbox_tenant_name  |Char          |NetBox   |Tenant / Kunde                                                                            |✓     |
+|netbox_url          |Char          |NetBox   |Link (Anzeigename klickbar → display_url)                                                 |✓     |
+|netbox_created      |Datetime      |NetBox   |Erstellungszeitpunkt aus NetBox (readonly)                                                |✓     |
+|netbox_last_updated |Datetime      |NetBox   |Letzte Änderung aus NetBox (readonly); steuert Sync-Logik                                 |✓     |
+|netbox_last_sync    |Datetime      |System   |Zeitpunkt letzter Abruf                                                                   |✓     |
+|netbox_sync_state   |Selection     |System   |ok / failed                                                                               |✓     |
+|netbox_sync_error   |Text          |System   |Fehlermeldung (nur bei Fehler sichtbar)                                                   |✓     |
+|ci_class_id         |Many2one      |Mapping  |CI-Klasse (via Role-Mapping, v0.9.1)                                                      |v0.9.1|
+|cmdb_id             |Integer       |manuell  |Legacy CMDB-ID (Abwärtskompatibilität); optional                                          |v0.9.1|
+|contract_id         |Many2one      |Zuordnung|Vertrag (contract.recurrent); CI gehört genau einem Vertrag                               |v0.9.1|
+|contract_service_ids|Many2many     |Kopie    |Gebuchte Leistungen – Kopie aus Vertrags-Leistungsmatrix (Kap. 11.3); keine Verlinkung    |v0.9.3|
+|active              |Boolean       |System   |Aktiv/Archiviert; archivierte CI (in NetBox gelöscht) werden nie gelöscht, nur deaktiviert|v1.1  |
 
 ==== 8.2 Feldregeln ====
 
-  * ''%%netbox_id%%'' ist editierbar
+  * ''%%netbox_id%%'' ist editierbar; **nur Ziffern erlaubt** (NetBox Device-ID ist numerisch)
   * alle anderen ''%%netbox_*%%'' Felder sind readonly
   * **netbox_created / netbox_last_updated:** Gleiche Sync-Logik wie bei NetBox Device Roles (Kap. 8.5): Feld leer oder NetBox jünger → Aktualisierung; sonst keine Änderung.
   * **ci_class_id:** Wird aus dem Mapping Device Role → CI-Klasse abgeleitet (readonly). Existiert ein Mapping für die NetBox-Device-Role des Geräts, wird die CI-Klasse angezeigt; sonst bleibt das Feld leer.
@@ -406,7 +489,9 @@ Es wird festgelegt, welche Leistung für welche Geräteklasse **grundsätzlich m
 
 ----
 
-===== 8.9 Anzeige im Portal (v0.9.1) =====
+===== 8.9 Anzeige im Portal (nicht v1.0) =====
+
+//Siehe FEATURE-LIST.md – wird bei geplanter Umsetzung hier ausformuliert.//
 
   * **Primär sichtbar:** CI-Klasse
   * **Device Role** nur als Detailinformation
@@ -439,6 +524,94 @@ Für wiederkehrende Produkte (''%%product.template%%'' mit ''%%detailed_type = "
 **Übertragung in Vertrag:** Bei ''%%_prepare_contract_values()%%'' werden **nur aktive Leistungen** in die Vertragswerte übernommen. Enthält die Produktmatrix noch „gelöscht markierte“ Leistungen (weil nicht bereinigt), werden diese nicht an neue Verträge weitergegeben – auch nicht bei duplizierten Angeboten.
 
 **Vorbild:** ''%%contingent_ids%%'' – wird am Produkt in intero_net gepflegt und in ''%%_prepare_contract_values()%%'' per Command in die Vertragswerte übernommen.
+
+
+----
+
+===== 8.11 Service-Voraussetzungen aus NetBox (v0.9.11) =====
+
+**Kontext:** NT:ServiceMan soll die Automatisierung der definierten Leistungen vorbereiten und später initialisieren. Die Leistungen werden im Wesentlichen mit Daten aus NetBox gesteuert. Damit eine Leistung (z. B. OpenCVE-Service, Konfig-Backup) erbracht werden kann, müssen bestimmte NetBox-Felder am CI ausgefüllt sein – z. B. Hersteller, Gerätebezeichnung oder Geräteklasse, damit externe Werkzeuge die Abfrage eingrenzen können.
+
+**Ziel:** Der Benutzer definiert pro Leistung, welche NetBox-Felder erforderlich sind. Das System prüft die Vollständigkeit am CI und signalisiert fehlende Felder – im Vertrag, am CI und mit Verweis auf die Nachpflege in NetBox.
+
+Die Umsetzung erfolgt in **drei aufeinander aufbauenden Teilen**, die nacheinander angegangen werden:
+
+==== 8.11.1 Teil 1: Feldliste pro Leistung (Konfiguration) ====
+
+**Anforderung:** Zu jeder Leistung existiert eine Liste der aus NetBox bereitgestellten Felder. Der Benutzer markiert per Häkchen: //Dieses Feld muss für die aktuell ausgewählte Leistung ausgefüllt sein.//
+
+**Methode zur Ermittlung der Feldstruktur:** NetBox-Schema-API (Option B) – keine halben Sachen. Der Katalog der verfügbaren Felder wird aus dem offiziellen OpenAPI-Schema von NetBox abgeleitet, nicht aus einem Beispiel-CI.
+
+**Teilschritte (Reihenfolge):**
+
+=== 8.11.1a Teilschritt: Device-Struktur ermitteln und anzeigen ===
+
+**Ziel:** Die Struktur eines NetBox-Devices aus dem Schema ermitteln und als einfache Liste darstellen.
+
+**Technik:** - Endpoint: ''%%GET /api/schema/%%'' – NetBox liefert das OpenAPI-Schema (JSON) - Device-Modell: Schema für ''%%/api/dcim/devices/%%'' auswerten, alle Felder (inkl. Pfade für verschachtelte Objekte wie ''%%device_type.manufacturer%%'') extrahieren - **Hinweis:** Schema-Abruf kann langsam sein (NetBox: 7–8 s); ggf. cachen - **Darstellung:** Im Leistung-Formular (Konfiguration > Leistungen), unter dem Bereich „Verfügbare CI-Klassen“, ein neuer Bereich „NetBox-Device-Felder“ mit einer einfachen Liste der Feldnamen (noch ohne Häkchen)
+
+**Abnahme:** Beim Öffnen einer Leistung werden die ermittelten NetBox-Device-Felder als Liste angezeigt.
+
+=== 8.11.1b Teilschritt: Häkchen „erforderlich“ pro Feld (folgt auf 8.11.1a) ===
+
+**Ziel:** Pro Feld ein Häkchen „Für diese Leistung erforderlich“. Auswahl wird gespeichert.
+
+**Technik:** - Pro Leistung: Many2many oder Relationstabelle zu den erforderlichen Feldern - Benutzerschnittstelle: Checkboxen in der Feldliste (8.11.1a)
+
+**Abnahme:** Pro Leistung können erforderliche Felder per Häkchen markiert und gespeichert werden.
+
+
+----
+
+**Beispiel (nach 8.11.1b):** Leistung „Proaktiver Sicherheits-Service (CVE)“ – erforderlich: Hersteller (device_type.manufacturer), Gerätebezeichnung/Modell (device_type), ggf. weitere Felder je nach Abfrage-Logik des CVE-Werkzeugs
+
+
+----
+
+==== 8.11.2 Teil 2: Indikator in Verträgen (Grün/Rot) ====
+
+**Anforderung:** Wird ein CI einem Vertrag zugeordnet (CMDB-Tab, Wizard „CI zuordnen“), soll optisch erkennbar sein: - **Grün:** Für alle gebuchten Leistungen sind die erforderlichen Felder vorhanden und ausgefüllt - **Rot:** Mindestens ein Feld für mindestens eine gebuchte Leistung fehlt am CI
+
+**Gewählte Darstellung (Option A – Icon-Spalte):** - **Vollständig:** Grünes Häkchen (''%%fa-check-circle%%'' + ''%%text-success%%'') - **Fehlende Felder:** Gelbes Dreieck mit Ausrufezeichen (''%%fa-exclamation-triangle%%'' + ''%%text-warning%%'')
+
+**Weitere Optionen (nicht gewählt):**
+
+^Option                     ^Beschreibung                                                                                 ^Vor-/Nachteile                                                                 ^
+|**A: Icon-Spalte**         |Eigene Spalte mit farbigem Icon (z. B. ✓ / ⚠ oder fa-check-circle / fa-exclamation-circle)   |Kompakt, eindeutig; benötigt eine Spalte Platz                                 |
+|**B: Badge/Text**          |Kurzer Badge neben dem CI-Namen: „Vollständig“ (grün) oder „Fehlende Felder“ (rot)           |Selbsterklärend; mehr Platzbedarf                                              |
+|**C: Zeilenfärbung**       |Ganze Zeile grün oder rot hinterlegt (''%%decoration-success%%'' / ''%%decoration-danger%%'')|Sehr auffällig, schnell erfassbar; kann bei vielen CIs optisch überladen wirken|
+|**D: Farbiger Punkt**      |Kleiner farbiger Punkt/Circle in einer Spalte (über Icon oder Custom-CSS)                    |Sehr kompakt; weniger selbsterklärend                                          |
+|**E: Status-Spalte (Text)**|Eigene Spalte „Status“ mit Werten wie „OK“ / „Fehlende Felder“                               |Explizit, barrierefreundlich; keine Farbsemantik nötig                         |
+|**F: Kombination**         |z. B. Icon + Tooltip mit Details („Leistung X: Feld Y fehlt“)                                |Höchste Informationsdichte; mehr Implementierungsaufwand                       |
+
+**Betroffene Stellen:** - **CMDB-Tab** (Vertragsformular): CI-Liste des Vertrags – hier ist der Indikator laut Anforderung zentral - **Wizard „CI zuordnen“**: Optional; Nutzer könnte vor der Zuordnung sehen, welche CI bereits vollständig sind
+
+**Technische Idee:** - Beim CI-Abruf aus NetBox: Werte der erforderlichen Felder mitlesen und in Odoo halten (oder bei jedem Abruf prüfen) - Berechnung: Pro CI, pro gebuchter Leistung prüfen, ob alle erforderlichen Felder gefüllt sind - Darstellung: Icon-Spalte am CI – grünes Häkchen (vollständig) / gelbes Dreieck (fehlende Felder)
+
+**Abnahme:** In der CI-Liste des Vertrags ist bei jedem CI der Status (vollständig/unvollständig) sichtbar.
+
+
+----
+
+==== 8.11.3 Teil 3: Hinweise im CI-Formular ====
+
+**Anforderung:** Im CI-Formular soll klar benannt werden: //Leistung X: fehlende Felder [Liste]//. Der Nutzer trägt die Felder in NetBox nach – der Link zum CI in NetBox ist vorhanden und führt direkt dorthin.
+
+**Technische Idee:** - Bereich „Service-Voraussetzungen“ oder „Fehlende Felder“ im CI-Formular - Pro gebuchter Leistung: wenn Felder fehlen → Liste der fehlenden Felder anzeigen - Link zu NetBox (netbox_url) prominent – Nutzer öffnet NetBox und pflegt dort nach - Nach NetBox-Aktualisierung: Button „Hole von NetBox“ am CI → erneuter Abruf, Status aktualisiert sich
+
+**Abnahme:** Im CI-Formular sind fehlende Felder pro Leistung benannt; NetBox-Link ist verfügbar.
+
+
+----
+
+**Reihenfolge:** Teil 1 → Teil 2 → Teil 3 (jeweils baut auf dem Vorherigen auf).
+
+==== 8.12 NetBox-Rohdaten / Debug-Anzeige (Sicherheit, geplant v1.2) ====
+
+Die Anzeige der rohen API-Antwort (Roh-JSON) aus NetBox unterliegt folgender Einschränkung:
+
+  * **Zugriff:** Nur für **NT:ServiceMan Admin** sichtbar (nicht für NT:ServiceMan Nutzer). Das Debug-Bereich (Roh-JSON) im CI-Formular wird über ''%%groups="nt_serviceman.group_nt_serviceman_admin"%%'' ausgeblendet, wenn der Benutzer kein Admin ist.
+  * **Speicherung:** Bleibt unverändert – Rohdaten werden wie bisher beim Abruf in ''%%netbox_raw_response%%'' gespeichert. Keine Datenbankmigration erforderlich.
 
 
 ----
@@ -480,6 +653,53 @@ Für wiederkehrende Produkte (''%%product.template%%'' mit ''%%detailed_type = "
 |Erfolgreicher Abruf |Sync-Status = ok    |
 
 Fehler führen nicht zum Löschen oder Überschreiben bestehender Daten.
+
+
+----
+
+==== 9.4 Sync aller CI aus NetBox (v1.1) ====
+
+**Ziel:** Alle Devices aus NetBox abrufen und als CI in Odoo anlegen bzw. aktualisieren – nicht nur einzelne CI per Button „Hole von NetBox“.
+
+**Auslöser:** Button „Alle CI holen“ im Config-Formular (Einstellungen NT:ServiceMan), unter NetBox-Synchronisation.
+
+**Endpoint:** ''%%/api/dcim/devices/%%'' (Liste mit Paginierung, alle Seiten werden abgerufen).
+
+**Inkremental-Sync (Delta):** Ab dem zweiten Lauf wird nur nach geänderten Devices gefragt, um die Laufzeit zu verkürzen:
+
+  * NetBox unterstützt den Filter ''%%last_updated__gte=<ISO8601-Timestamp>%%''.
+  * Der Zeitpunkt des letzten erfolgreichen Syncs wird in ''%%ir.config_parameter%%'' gespeichert (''%%nt_serviceman.netbox_last_sync_all_timestamp%%'').
+  * Beim nächsten Lauf: ''%%GET /api/dcim/devices/?last_updated__gte=<letzter_sync>%%'' – nur geänderte Devices werden abgerufen.
+  * **Einschränkung:** NetBox setzt ''%%last_updated%%'' am Device nicht fort, wenn sich nur Child-Objekte (z. B. Interfaces) ändern. Bei reinen Device-Änderungen funktioniert der Filter zuverlässig.
+  * **Vollabgleich:** Wenn kein gespeicherter Zeitpunkt vorhanden ist (erster Lauf) oder „Vollabgleich“ angefordert wird, erfolgt ein vollständiger Abruf ohne Filter. Nur dann wird die Archivierung (in NetBox entfernte CI) erkannt.
+
+**Regeln:**
+
+^Regel                          ^Verhalten                                                                                                                            ^
+|**Bestehende CI**              |Update nur, wenn sich etwas geändert hat (Sync-Logik: Feld leer oder NetBox jünger → Aktualisierung)                                 |
+|**Nichts löschen**             |CI werden niemals physisch gelöscht                                                                                                  |
+|**In NetBox entfernt**         |CI, die in der NetBox-Liste nicht mehr vorkommen, werden lokal **archiviert** (''%%active=False%%'') – nur bei Vollabgleich erkennbar|
+|**Neu in NetBox**              |Werden als neue CI angelegt                                                                                                          |
+|**Archivierte CI reaktivieren**|Wenn ein zuvor archiviertes CI wieder in NetBox erscheint, wird es reaktiviert (''%%active=True%%'') und aktualisiert                |
+
+**Technik:** Analog zu Device Roles (Kap. 8.5): Upsert-Logik über ''%%netbox_id%%''; ''%%netbox_last_updated%%'' steuert die Sync-Entscheidung.
+
+**Rückmeldung:** Nach dem Sync wird eine Browser-Benachrichtigung angezeigt mit: - Anzahl neu angelegter CI - Anzahl aktualisierter CI - Anzahl archivierter CI (bei Vollabgleich) - Anzahl aktiver CI in Odoo (gesamt)
+
+
+----
+
+==== 9.5 Geplanter Vollabgleich (Cron) – v1.2 ====
+
+**Ziel:** Der Vollabgleich (Kap. 9.4) läuft regelmäßig im Hintergrund, ohne manuelle Auslösung. So werden Änderungen in NetBox (inkl. verschachtelter Objekte wie Tenant) zuverlässig nach Odoo übernommen.
+
+**Auslöser:** Geplante Aktion (''%%ir.cron%%''), Standard-Intervall **täglich** (z. B. 02:00). Der Intervall ist in Odoo unter Einstellungen → Technisch → Geplante Aktionen änderbar.
+
+**Technik:** - Button „Vollabgleich“ und Cron-Job rufen dieselbe Sync-Funktion auf – einheitliche Logik. - **Testen ohne Cron:** Wenn der Cron-Job deaktiviert ist (z. B. in Stage), kann der Vollabgleich über den Button „Vollabgleich“ in den Einstellungen getestet werden; die gleiche Funktion wird ausgeführt. - Ergebnis wird in ''%%ir.config_parameter%%'' gespeichert: Zeitpunkt, Status (ok/failed), Fehlermeldung, optional Statistiken. - Im Einstellungsformular: Anzeige „Letzter Vollabgleich“ (Zeitpunkt, Status, Fehler falls vorhanden).
+
+**Chatter am Config-Formular:** - Das Modell ''%%nt_serviceman.config%%'' erhält Chatter (mail.thread). - Nach jedem geplanten Lauf wird eine **Log-Nachricht** im Chatter der Einstellungen erstellt: - Erfolg: „Vollabgleich abgeschlossen: X neu, Y aktualisiert, Z archiviert.“ - Fehler: „Vollabgleich fehlgeschlagen: [Fehlermeldung].“ - So ist der Verlauf der geplanten Läufe direkt in den Einstellungen nachvollziehbar.
+
+**Fehlerbehandlung:** - Bei Fehler: Eintrag in Config-Parametern, Log im Chatter, Exception wird weitergegeben. - Die Cron-Option „Bei Fehlern E-Mail senden“ kann aktiviert werden; Empfänger in Odoo konfigurierbar. - Optional: Aktivität für NT:ServiceMan Admin bei Fehlschlag.
 
 
 ----
@@ -637,7 +857,7 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 |5 |**NetBox-Felder übernommen**                     |Anzeigename, Serial, Hardware-Typ, Rolle, Tenant (readonly)                                                                                                                     |
 |6 |**Name** wird aus NetBox übernommen              |Name optional, automatisch beim Abruf                                                                                                                                           |
 |7 |**NetBox-Link**                                  |Anzeigename klickbar → öffnet Gerät in NetBox (neuer Tab)                                                                                                                       |
-|8 |**Roh-JSON** für Debug                           |Vollständige API-Antwort sichtbar                                                                                                                                               |
+|8 |**Roh-JSON** für Debug                           |Vollständige API-Antwort sichtbar; **geplant v1.2:** nur für NT:ServiceMan Admin (groups-Attribut am Debug-Bereich)                                                             |
 |9 |**Einstellungen-Überschrift**                    |„Einstellungen NT:ServiceMan“ statt technischem Namen                                                                                                                           |
 |10|**Rechte**                                       |Config nur für NT:ServiceMan Admin                                                                                                                                              |
 |11|**Kap. 8.1 Felder**                              |netbox_tenant_name, netbox_last_sync, netbox_sync_state, netbox_sync_error                                                                                                      |
@@ -664,44 +884,22 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 31 | **CI-Zuordnung nur Matrix-CI-Klassen** (Kap. 11.1) | Nur CI zuordenbar, deren CI-Klasse in der Leistungsmatrix vorkommt; Wizard Domain + Validierung; Constraint am CI | v0.9.11 |\\
 32 | **Gebuchte Leistungen am CI – Darstellung** (Kap. 11.3) | „Buchbar”→„Gebucht”; nur bei Vertrag sichtbar; read-only Punkt-Liste mit Bezeichnungen | v0.9.11 |\\
 33 | **Archivierte Leistungen am CI** (Kap. 11.3) | contract_service_ids inkl. archivierter Leistungen; separate Liste „Nicht mehr angeboten” im CI-Formular | v0.9.11 |\\
-34 | **Plan/Ist-Mengenabweichung** (Kap. 4.9) | quantity_deviation in Leistungsmatrix; Filter „Mit Mengenabweichung” in Vertragsliste | v0.9.11 |
+34 | **Plan/Ist-Mengenabweichung** (Kap. 4.9) | quantity_deviation in Leistungsmatrix; Filter „Plan-Ist-Abweichung” in Vertragsliste | v0.9.11 |\\
+35 | **Service-Voraussetzungen aus NetBox** (Kap. 8.11) | (1) Feldliste pro Leistung mit Häkchen, custom_fields expandiert; (2) Grün/Gelb-Indikator im CMDB-Tab; (3) Fehlende Felder im CI-Formular + NetBox-Link; Sync bei Matrix-Änderung | v0.9.11 |\\
+36 | **Chatter sichtbar** (Bug) | Chatter-Darstellung in Formularen (Leistungen, CI-Klassen, CIs): Felder in oe_chatter mit Widgets mail_followers/mail_thread | v0.9.11 |\\
+37 | **Anzeige „Tenant” → „Partner”** (Kap. 8.1) | Feld-Label netbox_tenant_name von „Tenant” auf „Partner” geändert; Verknüpfung CI–Partner zurückgestellt (Kundennummer in NetBox nicht hinterlegt) | v0.9.11 |\\
+38 | **Vertrags-Filter: Plan-Ist + Service-Felder** | Filter umbenannt: „Plan-Ist-Abweichung”; neu: „Abweichung Service-Felder” + Gruppierung nach beiden | v0.9.11 |\\
+39 | **Filter und Gruppierungen** | Erweiterte Filter und Gruppierungen in CI-, Vertrags- und Service-Listen | v1.0 |\\
+40 | **active am CI** (Kap. 8.1) | CI archivierbar (active=False); für in NetBox gelöschte Geräte | v1.1 |\\
+41 | **Alle CI holen** (Kap. 9.4) | Button im Config-Formular; holt alle Devices von /api/dcim/devices/ (mit Paginierung); Upsert + Archivieren | v1.1 |\\
+42 | **Delta-Sync + Notification** (Kap. 9.4) | Inkremental-Sync mit last_updated%%__%%gte; Benachrichtigung: X neu, Y aktualisiert, Z archiviert, N aktive CI; Vollabgleich-Button für Archivierung | v1.1 |\\
+43 | **Geplanter Vollabgleich** (Kap. 9.5) | ir.cron täglich; Chatter am Config für Log-Einträge; Vollabgleich-Button und Cron nutzen dieselbe Funktion (Test ohne Cron möglich) | v1.2 |
 
-===== ⏳ Offen (v0.9 / v0.9.1 / v0.9.2 / v0.9.4) =====
-
-^#^Thema                                                                                                                                  ^Quelle                                                    ^
-|1|**Plan/Ist-Benachrichtigung** (optional)                                                                                               |Aktivität/Chatter bei Abweichung – bewusst nicht umgesetzt|
-|2|**Portal** – CI-Klasse primär, Device Role als Detail                                                                                  |Kap. 8.9                                                  |
-|3|**Chatter** funktioniert nicht richtig (Bug)                                                                                           |–                                                         |
-|4|**Tenant → Partner** umbenennen; Verknüpfung über Kundennummer Odoo–NetBox                                                             |Kap. 8.1                                                  |
-|5|**Service-Voraussetzungen aus NetBox** (z. B. OpenCVE) – pro Leistung erforderliche NetBox-Felder; Indikator OK/Rot; Techniker-Hinweise|geplant                                                   |
-|6|**NetBox: Initial-Import** – alle CI aus NetBox holen und in Odoo anlegen                                                              |geplant                                                   |
-|7|**NetBox: Update bei Änderungen** – Mechanismus (Webhook/Cron), der bei NetBox-Änderungen Odoo aktualisiert                            |geplant                                                   |
-|8|**Filter und Gruppierungen** – erweiterte Nutzerunterstützung in Listen (CI, Verträge, Services)                                       |geplant                                                   |
-
-==== Status NetBox & Services (Überblick) ====
+==== Status NetBox (bereits vorhanden) ====
 
 **Bereits vorhanden:** - NetBox-Schnittstelle: manueller Abruf pro CI (Button „Hole von NetBox“) - REST-API-Anbindung, Felderübernahme (Name, Rolle, Tenant, Serial, Hardware-Typ, …) - CI-Anlage mit NetBox-ID; Device-Role-Mapping → CI-Klasse
 
-**Geplant (ToDo):**
-
-^Bereich  ^Thema                       ^Kurzbeschreibung                                                                                                                                                 ^
-|NetBox   |**Initial-Import**          |Alle Devices aus NetBox abrufen und als CI in Odoo anlegen (Bulk-Import)                                                                                         |
-|NetBox   |**Update bei Änderungen**   |Mechanismus, der bei Änderungen in NetBox ein Update in Odoo auslöst (Webhook, periodischer Abgleich o. Ä.)                                                      |
-|NetBox/CI|**CI–Kunde / Partner**      |Zuordnung CI zu Kunde prüfen (in NetBox vorhanden?); evtl. Odoo-Kundennummer in NetBox gepflegt → Verknüpfung herstellen (vgl. Tenant → Partner)                 |
-|Services |**Service-Voraussetzungen** |Pro Leistung: benutzergepflegte Feldliste (NetBox-Felder, die gefüllt sein müssen). Feld leer → Service nicht möglich. Basis für Automatisierung (z. B. OpenCVE).|
-|UX       |**Filter und Gruppierungen**|Erweiterte Filter und Gruppierungen in Listen, damit Nutzer gut unterstützt werden                                                                               |
-
-==== Offene Punkte – Detail (einzelnd umsetzbar, Reihenfolge nach Aufwand) ====
-
-^#^Thema                                      ^Aufwand    ^Kurzbeschreibung                                                                                                                                                                                       ^
-|1|**Plan/Ist-Benachrichtigung** (optional)   |1–2 h      |Activity/Chatter bei Abweichung – optional, Sichtbarkeit bereits umgesetzt.                                                                                                                            |
-|2|**Portal**                                 |ungewiss   |CI-Klasse primär, Device Role als Detail. intero_net_portal zeigt aktuell keine CIs; Aufwand abhängig davon, ob nur View-Anpassung oder neues Portal-Feature nötig (4 h bis 2 Tage).                   |
-|3|**Chatter-Bug**                            |ungewiss   |Chatter funktioniert mindestens bei CI nicht; vermutlich auch bei Vertrag und anderen Modellen – Analyse erforderlich.                                                                                 |
-|4|**Tenant → Partner**                       |4–8 h      |Feld „Tenant” in „Partner” umbenennen (Odoo-Schreibweise). NetBox prüfen, ob Kundennummer aus Odoo vorhanden ist; Verknüpfung CI–Partner darüber herstellen.                                           |
-|5|**Service-Voraussetzungen (NetBox-Felder)**|mittel–hoch|Pro Leistung: benutzergepflegte Feldliste (NetBox-Felder, die gefüllt sein müssen). Feld leer → Service nicht möglich. Indikator OK/Rot; Techniker-Hinweise. Basis für Automatisierung (z. B. OpenCVE).|
-|6|**NetBox Initial-Import**                  |1–2 Tage   |Alle Devices aus NetBox (z. B. /api/dcim/devices/) abrufen und als CI in Odoo anlegen. Button oder Aktion in Konfiguration.                                                                            |
-|7|**NetBox Update bei Änderungen**           |2–5 Tage   |Mechanismus: Webhook (NetBox → Odoo) oder periodischer Abgleich (Cron). Bei Änderung in NetBox → Update des betroffenen CI in Odoo.                                                                    |
-|8|**Filter und Gruppierungen**               |4–8 h      |Erweiterte Filter und Gruppierungen in CI-, Vertrags- und Service-Listen für bessere Nutzerunterstützung.                                                                                              |
+**Weitere NetBox-Ideen:** siehe FEATURE-LIST.md
 
 ==== Lösungsvorschlag: CI-Zuordnung nur für Matrix-CI-Klassen (umgesetzt v0.9.11) ====
 
@@ -718,4 +916,4 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 
 **Randfälle:** - **Vertrag ohne Matrix-Zeilen:** Keine CI zuordenbar (korrekt). - **CI ohne CI-Klasse (ci_class_id leer):** Nicht zuordenbar (kein Mapping Device Role → CI-Klasse). - **Bestehende Zuordnungen:** Bereits zugeordnete CI mit „fremder” CI-Klasse bleiben bestehen; Constraint verhindert nur neue Zuordnungen. Optional: manuelle Bereinigung oder Migrations-Hinweis.
 
-**Empfohlener Einstieg:** Punkt 1 (Plan/Ist-Vergleich Hinweis) oder Punkt 3 (CI-Zuordnung).
+**Nächste Ideen:** siehe FEATURE-LIST.md.

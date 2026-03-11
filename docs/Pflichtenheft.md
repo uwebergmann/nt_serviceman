@@ -266,6 +266,15 @@ Die Konfigurationsparameter (NetBox-URL, API-Token) werden als **Systemparameter
 
 Die Bedienoberfläche (NT:ServiceMan > Konfiguration > Einstellungen) bleibt unverändert; das Formular liest und schreibt transparent in `ir.config_parameter`.
 
+### 7.2.1 Sicherheitsanforderungen NetBox-URL (geplant v1.2)
+
+- **Automatischer Test beim Speichern:** Beim Speichern der NetBox-URL wird der Test (Server erreichbar, REST-API, NetBox-Struktur, Token) automatisch ausgeführt. Nur bei erfolgreichem Test wird die URL persistiert.
+- **Erweiterte URL-Validierung:** Der Test bzw. die Validierung lehnt URLs ab, die zu SSRF oder anderen Angriffen missbraucht werden könnten:
+  - Nur http:// und https:// erlaubt
+  - Keine lokalen Hosts (localhost, 127.x, ::1, 0.0.0.0)
+  - Keine privaten, link-local oder reservierten IP-Adressen
+  - Keine gefährlichen Zeichen (@, .., Nullbytes)
+
 ### 7.3 Rechte- und Sicherheitskonzept
 
 Der Zugriff auf NT:ServiceMan erfolgt **rollenbasiert** über die Gruppen:
@@ -341,7 +350,7 @@ Der Chatter (Nachrichten, Aktivitäten, Änderungshistorie) wird nur für ausgew
 
 ### 8.2 Feldregeln
 
-- `netbox_id` ist editierbar
+- `netbox_id` ist editierbar; **nur Ziffern erlaubt** (NetBox Device-ID ist numerisch)
 - alle anderen `netbox_*` Felder sind readonly
 - **netbox_created / netbox_last_updated:** Gleiche Sync-Logik wie bei NetBox Device Roles (Kap. 8.5): Feld leer oder NetBox jünger → Aktualisierung; sonst keine Änderung.
 - **ci_class_id:** Wird aus dem Mapping Device Role → CI-Klasse abgeleitet (readonly). Existiert ein Mapping für die NetBox-Device-Role des Geräts, wird die CI-Klasse angezeigt; sonst bleibt das Feld leer.
@@ -685,6 +694,13 @@ Die Umsetzung erfolgt in **drei aufeinander aufbauenden Teilen**, die nacheinand
 
 **Reihenfolge:** Teil 1 → Teil 2 → Teil 3 (jeweils baut auf dem Vorherigen auf).
 
+### 8.12 NetBox-Rohdaten / Debug-Anzeige (Sicherheit, geplant v1.2)
+
+Die Anzeige der rohen API-Antwort (Roh-JSON) aus NetBox unterliegt folgender Einschränkung:
+
+- **Zugriff:** Nur für **NT:ServiceMan Admin** sichtbar (nicht für NT:ServiceMan Nutzer). Das Debug-Bereich (Roh-JSON) im CI-Formular wird über `groups="nt_serviceman.group_nt_serviceman_admin"` ausgeblendet, wenn der Benutzer kein Admin ist.
+- **Speicherung:** Bleibt unverändert – Rohdaten werden wie bisher beim Abruf in `netbox_raw_response` gespeichert. Keine Datenbankmigration erforderlich.
+
 ---
 
 ## 9. REST-Integration NetBox → Odoo
@@ -977,7 +993,7 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | 5 | **NetBox-Felder übernommen** | Anzeigename, Serial, Hardware-Typ, Rolle, Tenant (readonly) |
 | 6 | **Name** wird aus NetBox übernommen | Name optional, automatisch beim Abruf |
 | 7 | **NetBox-Link** | Anzeigename klickbar → öffnet Gerät in NetBox (neuer Tab) |
-| 8 | **Roh-JSON** für Debug | Vollständige API-Antwort sichtbar |
+| 8 | **Roh-JSON** für Debug | Vollständige API-Antwort sichtbar; **geplant v1.2:** nur für NT:ServiceMan Admin (groups-Attribut am Debug-Bereich) |
 | 9 | **Einstellungen-Überschrift** | „Einstellungen NT:ServiceMan“ statt technischem Namen |
 | 10 | **Rechte** | Config nur für NT:ServiceMan Admin |
 | 11 | **Kap. 8.1 Felder** | netbox_tenant_name, netbox_last_sync, netbox_sync_state, netbox_sync_error |
