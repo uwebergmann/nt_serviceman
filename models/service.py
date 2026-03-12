@@ -62,6 +62,12 @@ class Service(models.Model):
         string="NetBox-Device-Felder",
         help="Feldliste aus NetBox. Häkchen = für diese Leistung erforderlich (Kap. 8.11.1).",
     )
+    required_vm_field_ids = fields.One2many(
+        "nt_serviceman.service.required_vm_field",
+        "service_id",
+        string="NetBox-VM-Felder",
+        help="Feldliste für virtuelle Maschinen. Häkchen = für diese Leistung bei VMs erforderlich (Kap. 8.11.1c).",
+    )
 
     def _ensure_required_device_field_lines(self):
         """Synchronisiert Zeilen mit der gecachten Feldliste (beim Create oder Config-Refresh)."""
@@ -84,6 +90,26 @@ class Service(models.Model):
             )
             to_remove.unlink()
 
+    def _ensure_required_vm_field_lines(self):
+        """Synchronisiert VM-Feldzeilen mit der gecachten Feldliste (beim Create oder Config-Refresh)."""
+        config = self.env["nt_serviceman.config"]
+        fields_list = config._get_netbox_vm_field_names()
+        if not fields_list:
+            return
+        for service in self:
+            existing = {line.field_path for line in service.required_vm_field_ids}
+            for path in fields_list:
+                if path not in existing:
+                    self.env["nt_serviceman.service.required_vm_field"].create({
+                        "service_id": service.id,
+                        "field_path": path,
+                        "is_required": False,
+                    })
+            to_remove = service.required_vm_field_ids.filtered(
+                lambda l: l.field_path not in fields_list
+            )
+            to_remove.unlink()
+
     @api.depends("active")
     def _compute_color(self):
         """Archivierte Leistungen: grau (0). Aktive: Standard (1)."""
@@ -94,6 +120,7 @@ class Service(models.Model):
     def create(self, vals_list):
         records = super().create(vals_list)
         records._ensure_required_device_field_lines()
+        records._ensure_required_vm_field_lines()
         return records
 
     def unlink(self):
@@ -154,6 +181,55 @@ class ServiceRequiredDeviceField(models.Model):
     def _compute_example_value(self):
         config = self.env["nt_serviceman.config"]
         sample = config._get_netbox_device_sample()
+        for rec in self:
+            val = config._get_value_by_path(sample, rec.field_path) if sample else None
+            rec.example_value = config._format_field_value(val) or ""
+
+    def write(self, vals):
+        res = super().write(vals)
+        if "is_required" in vals or "field_path" in vals:
+            services = self.mapped("service_id")
+            if services:
+                cis = self.env["nt_serviceman.configuration_item"].search(
+                    [("contract_service_ids", "in", services.ids)]
+                )
+                cis.invalidate_recordset(["service_fields_status", "service_fields_status_icon"])
+        return res
+
+
+class ServiceRequiredVmField(models.Model):
+    """Eine Zeile: NetBox-VM-Feld + Häkchen ob erforderlich (Kap. 8.11.1c)."""
+
+    _name = "nt_serviceman.service.required_vm_field"
+    _description = "Erforderliches NetBox-VM-Feld pro Leistung"
+
+    service_id = fields.Many2one(
+        "nt_serviceman.service",
+        string="Leistung",
+        required=True,
+        ondelete="cascade",
+    )
+    field_path = fields.Char(
+        string="Feld",
+        required=True,
+        help="Pfad zum Feld (z.B. platform.name, cluster.name).",
+    )
+    is_required = fields.Boolean(
+        string="Erforderlich",
+        default=False,
+        help="Wenn gesetzt: Dieses Feld muss am VM-CI ausgefüllt sein, "
+        "damit die Leistung erbracht werden kann.",
+    )
+    example_value = fields.Char(
+        string="Beispielwert",
+        compute="_compute_example_value",
+        help="Beispielwert aus NetBox (zur Orientierung).",
+    )
+
+    @api.depends("field_path")
+    def _compute_example_value(self):
+        config = self.env["nt_serviceman.config"]
+        sample = config._get_netbox_vm_sample()
         for rec in self:
             val = config._get_value_by_path(sample, rec.field_path) if sample else None
             rec.example_value = config._format_field_value(val) or ""

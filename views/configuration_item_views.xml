@@ -13,6 +13,7 @@
         <field name="arch" type="xml">
             <tree string="Configuration Items" delete="false">
                 <field name="name"/>
+                <field name="netbox_source" string="NetBox-Quelle"/>
                 <field name="netbox_tenant_name" string="Partner"/>
                 <field name="contract_id"/>
                 <field name="contract_service_ids" string="Gebuchte Leistungen" widget="many2many_tags" optional="hide"/>
@@ -31,6 +32,7 @@
             <form string="Configuration Item">
                 <sheet>
                     <field name="show_debug_json" invisible="1"/>
+                    <field name="netbox_last_sync" invisible="1"/>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Wird aus NetBox übernommen"/></h1>
                     </div>
@@ -49,11 +51,13 @@
                         </group>
                         <group string="NetBox-Daten">
                             <field name="netbox_display_link" string="NetBox-Link"/>
+                            <field name="netbox_source" string="NetBox-Quelle"
+                                   attrs="{'readonly': [('netbox_last_sync', '!=', False)]}"/>
                             <field name="netbox_serial"/>
                             <field name="netbox_device_type"/>
                             <field name="netbox_manufacturer"/>
                             <field name="netbox_model"/>
-                            <field name="netbox_firmware_version"/>
+                            <field name="netbox_platform" string="Plattform"/>
                             <field name="netbox_role_id" string="Rolle im DCIM"/>
                             <field name="netbox_role_netbox_id" attrs="{'invisible': [('netbox_role_id', '=', False)]}"/>
                             <field name="netbox_tenant_name"/>
@@ -94,6 +98,8 @@
         <field name="name">CI-Einträge</field>
         <field name="res_model">nt_serviceman.configuration_item</field>
         <field name="view_mode">tree,form</field>
+        <!-- Kein group_by im Standard – explizit leeren überschreibt ggf. gespeicherte Voreinstellung -->
+        <field name="context" eval="{}"/>
     </record>
 
     <record id="view_configuration_item_search" model="ir.ui.view">
@@ -108,6 +114,7 @@
                         domain="[('active', '=', False)]"
                         context="{'active_test': False}"/>
                 <group expand="0" string="Gruppieren nach">
+                    <filter string="CI-Klasse" name="group_ci_class" context="{'group_by': 'ci_class_id'}"/>
                     <filter string="Vertrag" name="group_contract" context="{'group_by': 'contract_id'}"/>
                     <filter string="Gebuchte Leistung" name="group_service" context="{'group_by': 'contract_service_ids'}"/>
                 </group>

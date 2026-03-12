@@ -33,9 +33,9 @@ class ConfigurationItem(models.Model):
 
     _sql_constraints = [
         (
-            "netbox_id_unique",
-            "UNIQUE(netbox_id)",
-            "Die NetBox-ID muss eindeutig sein. Jedes NetBox-Gerät darf nur einmal in Odoo existieren.",
+            "netbox_source_id_unique",
+            "UNIQUE(netbox_source, netbox_id)",
+            "Die Kombination NetBox-Quelle und NetBox-ID muss eindeutig sein.",
         ),
     ]
 
@@ -45,7 +45,21 @@ class ConfigurationItem(models.Model):
     )
     netbox_id = fields.Char(
         string="NetBox-ID",
-        help="Nur Ziffern erlaubt (NetBox Device-ID ist numerisch, Kap. 8.2).",
+        help="Nur Ziffern erlaubt (NetBox Device-ID bzw. VM-ID ist numerisch, Kap. 8.2).",
+    )
+    netbox_source = fields.Selection(
+        [
+            ("device", "Physisches Gerät"),
+            ("vm", "Virtuelle Maschine"),
+        ],
+        string="NetBox-Quelle",
+        default="device",
+        help="Herkunft des Objekts in NetBox (Kap. 8.13). Nach erstem Abruf nur noch anzeigbar.",
+    )
+    netbox_platform = fields.Char(
+        string="Plattform/OS",
+        readonly=True,
+        help="Aus platform.name (NetBox); z.B. FortiOS 7.2, Ubuntu 22.04; für CPE/CVE.",
     )
 
     @api.constrains("netbox_id")
@@ -88,12 +102,7 @@ class ConfigurationItem(models.Model):
     netbox_model = fields.Char(
         string="Modell",
         readonly=True,
-        help="Aus device_type.model (NetBox); für CPE/CVE.",
-    )
-    netbox_firmware_version = fields.Char(
-        string="Firmware-Version",
-        readonly=True,
-        help="Aus custom_fields (NetBox); für CPE/CVE. Bleibt leer, falls nicht in NetBox gepflegt – blockiert nichts.",
+        help="Aus device_type.model (NetBox); Hardware-Modell, nur bei Devices; für CPE/CVE.",
     )
     netbox_role_id = fields.Many2one(
         "nt_serviceman.netbox_device_role",
@@ -109,10 +118,16 @@ class ConfigurationItem(models.Model):
     ci_class_id = fields.Many2one(
         "nt_serviceman.ci_class",
         string="CI-Klasse",
-        related="netbox_role_id.ci_class_id",
+        compute="_compute_ci_class_id",
+        store=True,
         readonly=True,
         help="Leitet sich aus dem Mapping Device Role → CI-Klasse ab.",
     )
+
+    @api.depends("netbox_role_id", "netbox_role_id.ci_class_id")
+    def _compute_ci_class_id(self):
+        for rec in self:
+            rec.ci_class_id = rec.netbox_role_id.ci_class_id if rec.netbox_role_id else False
     netbox_tenant_name = fields.Char(
         string="Partner",
         readonly=True,
@@ -221,12 +236,15 @@ class ConfigurationItem(models.Model):
         "contract_id",
         "contract_service_ids",
         "contract_service_ids.required_device_field_ids",
+        "contract_service_ids.required_vm_field_ids",
         "netbox_raw_response",
         "netbox_display_url",
         "netbox_display",
+        "netbox_source",
     )
     def _compute_service_fields_status(self):
-        """Prüft pro gebuchter Leistung ob alle erforderlichen Felder gefüllt sind (Kap. 8.11.2/8.11.3)."""
+        """Prüft pro gebuchter Leistung ob alle erforderlichen Felder gefüllt sind (Kap. 8.11.2/8.11.3).
+        Bei VM-CI: VM-Feldpfade; bei Device-CI: Device-Feldpfade."""
         config = self.env["nt_serviceman.config"]
         for rec in self:
             status = "na"
@@ -252,10 +270,13 @@ class ConfigurationItem(models.Model):
                 )
             else:
                 missing_per_service = []
+                is_vm = rec.netbox_source == "vm"
                 for service in rec.contract_service_ids:
-                    required = service.required_device_field_ids.filtered(
-                        lambda f: f.is_required
-                    )
+                    required = (
+                        service.required_vm_field_ids
+                        if is_vm
+                        else service.required_device_field_ids
+                    ).filtered(lambda f: f.is_required)
                     fields_missing = []
                     for field_line in required:
                         val = config._get_value_by_path(data, field_line.field_path)
@@ -384,14 +405,19 @@ class ConfigurationItem(models.Model):
             self._sync_contract_service_ids()
         return res
 
-    def _netbox_device_exists(self, netbox_id):
-        """Prüft, ob ein Device mit der NetBox-ID in NetBox existiert."""
+    def _netbox_item_exists(self, netbox_id, netbox_source):
+        """Prüft, ob das Objekt (Device oder VM) mit der NetBox-ID in NetBox existiert."""
         if not netbox_id or not (netbox_id := str(netbox_id).strip()):
             return True  # Leer = keine Prüfung
+        if not netbox_source:
+            return True  # Ohne Typ keine Prüfung (Pflicht erst vor Abruf)
         base_url, token = self.env["nt_serviceman.config"]._get_netbox_params()
         if not base_url:
             return True  # Keine Config = Prüfung überspringen
-        url = f"{base_url}/api/dcim/devices/{netbox_id}/"
+        if netbox_source == "vm":
+            url = f"{base_url}/api/virtualization/virtual-machines/{netbox_id}/"
+        else:
+            url = f"{base_url}/api/dcim/devices/{netbox_id}/"
         headers = {}
         if token:
             headers["Authorization"] = f"Token {token}"
@@ -401,13 +427,13 @@ class ConfigurationItem(models.Model):
         except requests.RequestException:
             return False
 
-    @api.constrains("netbox_id")
+    @api.constrains("netbox_id", "netbox_source")
     def _check_netbox_id_exists(self):
-        """NetBox-ID darf nur gespeichert werden, wenn das Gerät in NetBox existiert."""
+        """NetBox-ID darf nur gespeichert werden, wenn das Objekt in NetBox existiert."""
         for rec in self:
             if not rec.netbox_id or not str(rec.netbox_id).strip():
                 continue
-            if not rec._netbox_device_exists(rec.netbox_id):
+            if not rec._netbox_item_exists(rec.netbox_id, rec.netbox_source):
                 raise ValidationError(
                     _(
                         "Die NetBox-ID '%s' existiert nicht in NetBox. "
@@ -446,27 +472,40 @@ class ConfigurationItem(models.Model):
                 )
 
     def _extract_netbox_fields(self, data):
-        """Extrahiert Anzeigename, Serial, Hardware-Typ, Rolle, Tenant, CPE-Felder und Timestamps aus NetBox-JSON."""
+        """Extrahiert Anzeigename, Serial, Hardware-Typ, Rolle, Tenant, CPE-Felder und Timestamps aus NetBox-JSON.
+
+        Unterstützt Device (dcim) und VM (virtualization) – Struktur wird anhand vorhandener Keys erkannt.
+        """
         data = data or {}
-        display = data.get("display") or ""
+        is_vm = "cluster" in data or ("device_type" not in data and "platform" in data)
+        display = data.get("display") or data.get("name") or ""
         self.netbox_display = display
         if display:
             self.name = display
         self.netbox_display_url = data.get("display_url") or ""
-        self.netbox_serial = data.get("serial") or ""
-        device_type = data.get("device_type") or {}
-        self.netbox_device_type = device_type.get("display") or device_type.get("model") or ""
-        manufacturer = device_type.get("manufacturer") or {}
-        self.netbox_manufacturer = manufacturer.get("name") if isinstance(manufacturer, dict) else ""
-        self.netbox_model = device_type.get("model") or ""
-        # Firmware-Version: optional; mehrere Custom-Field-Namen probiert; leer = kein Blockieren
-        custom_fields = data.get("custom_fields") or {}
-        self.netbox_firmware_version = (
-            custom_fields.get("firmware_version")
-            or custom_fields.get("version")
-            or custom_fields.get("software_version")
-            or ""
-        )
+        self.netbox_serial = data.get("serial") or data.get("serial_number") or ""
+
+        platform = data.get("platform") or {}
+        platform_name = platform.get("name") if isinstance(platform, dict) else ""
+        self.netbox_platform = platform_name or ""
+
+        if is_vm:
+            self.netbox_device_type = ""
+            manufacturer = platform.get("manufacturer") if isinstance(platform, dict) else {}
+            self.netbox_manufacturer = (
+                manufacturer.get("name") if isinstance(manufacturer, dict) else ""
+            )
+            self.netbox_model = ""
+        else:
+            device_type = data.get("device_type") or {}
+            self.netbox_device_type = (
+                device_type.get("display") or device_type.get("model") or ""
+            )
+            manufacturer = device_type.get("manufacturer") or {}
+            self.netbox_manufacturer = (
+                manufacturer.get("name") if isinstance(manufacturer, dict) else ""
+            )
+            self.netbox_model = device_type.get("model") or ""
         role = data.get("role") or data.get("device_role")
         role_nb_id = None
         if isinstance(role, dict):
@@ -506,7 +545,7 @@ class ConfigurationItem(models.Model):
         self.write({"contract_id": False})
 
     def action_fetch_from_netbox(self):
-        """Ruft das Gerät per REST aus NetBox ab und speichert die Rohdaten."""
+        """Ruft Device oder VM per REST aus NetBox ab und speichert die Rohdaten (Kap. 8.13.4)."""
         self.ensure_one()
         base_url, token = self.env["nt_serviceman.config"].sudo()._get_netbox_params()
         nb_id = (self.netbox_id or "").strip()
@@ -522,10 +561,22 @@ class ConfigurationItem(models.Model):
             self.netbox_raw_response = '{"error": "Keine NetBox-ID eingetragen."}'
             self._extract_netbox_fields({})
             self.netbox_sync_state = "failed"
-            self.netbox_sync_error = "Keine NetBox-ID eingetragen."
-            return
+            self.netbox_sync_error = "Bitte geben Sie die NetBox-ID ein."
+            raise UserError(_("Bitte geben Sie die NetBox-ID ein."))
 
-        url = f"{base_url}/api/dcim/devices/{nb_id}/"
+        if not self.netbox_source:
+            self.netbox_raw_response = '{"error": "Objekttyp fehlt."}'
+            self._extract_netbox_fields({})
+            self.netbox_sync_state = "failed"
+            self.netbox_sync_error = "Bitte wählen Sie den Objekttyp (Physisches Gerät oder Virtuelle Maschine)."
+            raise UserError(
+                _("Bitte wählen Sie den Objekttyp (Physisches Gerät oder Virtuelle Maschine).")
+            )
+
+        if self.netbox_source == "vm":
+            url = f"{base_url}/api/virtualization/virtual-machines/{nb_id}/"
+        else:
+            url = f"{base_url}/api/dcim/devices/{nb_id}/"
         headers = {}
         if token:
             headers["Authorization"] = f"Token {token}"
@@ -571,30 +622,27 @@ class ConfigurationItem(models.Model):
                 indent=2,
             )
 
-    @api.model
-    def _run_sync_all_from_netbox(self, force_full=False):
-        """Kernlogik Sync aller CI (Kap. 9.4/9.5). Returns dict or raises.
-        Für Button und Cron; beide rufen diese Methode auf."""
-        base_url, token = self.env["nt_serviceman.config"].sudo()._get_netbox_params()
+    def _sync_netbox_source_list(
+        self,
+        source,
+        base_url,
+        headers,
+        last_sync_str,
+        do_full_sync,
+    ):
+        """Sync eine Quelle (device oder vm) von NetBox. Returns (created, updated, ids_seen)."""
+        if source == "device":
+            list_path = "/api/dcim/devices/"
+        else:
+            list_path = "/api/virtualization/virtual-machines/"
 
-        if not base_url:
-            raise UserError(_("Keine NetBox-URL konfiguriert."))
-
-        headers = {}
-        if token:
-            headers["Authorization"] = f"Token {token}"
-
-        icp = self.env["ir.config_parameter"].sudo()
-        last_sync_str = icp.get_param(NETBOX_LAST_SYNC_ALL_KEY, "").strip() or None
-
-        do_full_sync = force_full or not last_sync_str
-        url = f"{base_url}/api/dcim/devices/"
+        url = f"{base_url.rstrip('/')}{list_path}"
         if not do_full_sync and last_sync_str:
             netbox_ts = last_sync_str.replace(" ", "T") + "Z"
             url = f"{url}?last_updated__gte={netbox_ts}"
 
-        created = updated = archived = 0
-        netbox_ids_seen = set()
+        created = updated = 0
+        ids_seen = set()
 
         while url:
             r = requests.get(url, headers=headers, timeout=30, verify=False)
@@ -606,11 +654,15 @@ class ConfigurationItem(models.Model):
                 if nb_id is None:
                     continue
                 nb_id_str = str(nb_id)
-                netbox_ids_seen.add(nb_id_str)
+                ids_seen.add(nb_id_str)
                 nb_last_updated = self._parse_netbox_datetime(item.get("last_updated"))
 
                 existing = self.sudo().with_context(active_test=False).search(
-                    [("netbox_id", "=", nb_id_str)], limit=1
+                    [
+                        ("netbox_source", "=", source),
+                        ("netbox_id", "=", nb_id_str),
+                    ],
+                    limit=1,
                 )
                 if existing:
                     do_update = False
@@ -636,7 +688,10 @@ class ConfigurationItem(models.Model):
                         existing.sudo().write(vals)
                         updated += 1
                 else:
-                    new_ci = self.sudo().create({"netbox_id": nb_id_str})
+                    new_ci = self.sudo().create({
+                        "netbox_id": nb_id_str,
+                        "netbox_source": source,
+                    })
                     new_ci._extract_netbox_fields(item)
                     new_ci.sudo().write({
                         "netbox_last_sync": fields.Datetime.now(),
@@ -649,14 +704,77 @@ class ConfigurationItem(models.Model):
             if url and not url.startswith("http"):
                 url = f"{base_url}{url}" if url.startswith("/") else None
 
-        if do_full_sync and netbox_ids_seen:
-            obsolete = self.sudo().with_context(active_test=False).search([
-                ("netbox_id", "not in", list(netbox_ids_seen)),
+        return created, updated, ids_seen
+
+    @api.model
+    def _run_sync_all_from_netbox(self, force_full=False):
+        """Kernlogik Sync aller CI (Kap. 9.4/9.5). Returns dict or raises.
+        Holt Devices und VMs; für Button und Cron."""
+        base_url, token = self.env["nt_serviceman.config"].sudo()._get_netbox_params()
+
+        if not base_url:
+            raise UserError(_("Keine NetBox-URL konfiguriert."))
+
+        headers = {}
+        if token:
+            headers["Authorization"] = f"Token {token}"
+
+        icp = self.env["ir.config_parameter"].sudo()
+        last_sync_str = icp.get_param(NETBOX_LAST_SYNC_ALL_KEY, "").strip() or None
+
+        do_full_sync = force_full or not last_sync_str
+        created = updated = archived = 0
+        device_ids_seen = set()
+        vm_ids_seen = set()
+
+        # Devices (Pflicht – schlägt bei Fehler fehl)
+        cr_dev, upd_dev, device_ids_seen = self._sync_netbox_source_list(
+            "device",
+            base_url,
+            headers,
+            last_sync_str,
+            do_full_sync,
+        )
+        created += cr_dev
+        updated += upd_dev
+
+        # VMs (optional – bei 404 Virtualization-API wird übersprungen, Kap. 9.4)
+        vm_sync_ok = False
+        try:
+            cr_vm, upd_vm, vm_ids_seen = self._sync_netbox_source_list(
+                "vm",
+                base_url,
+                headers,
+                last_sync_str,
+                do_full_sync,
+            )
+            created += cr_vm
+            updated += upd_vm
+            vm_sync_ok = True
+        except requests.RequestException:
+            # Virtualization-API fehlt (404) oder anderer Fehler – VM-Sync überspringen
+            pass
+
+        # Archivierung (nur bei Vollabgleich, getrennte Mengen pro Quelle)
+        # VM-Archivierung nur wenn VM-Sync erfolgreich (sonst vm_ids_seen leer → alle archivieren)
+        if do_full_sync:
+            obsolete_dev = self.sudo().with_context(active_test=False).search([
+                ("netbox_source", "=", "device"),
+                ("netbox_id", "not in", list(device_ids_seen)),
                 ("active", "=", True),
             ])
-            if obsolete:
-                obsolete.sudo().write({"active": False})
-                archived = len(obsolete)
+            if obsolete_dev:
+                obsolete_dev.sudo().write({"active": False})
+                archived += len(obsolete_dev)
+            if vm_sync_ok:
+                obsolete_vm = self.sudo().with_context(active_test=False).search([
+                    ("netbox_source", "=", "vm"),
+                    ("netbox_id", "not in", list(vm_ids_seen)),
+                    ("active", "=", True),
+                ])
+                if obsolete_vm:
+                    obsolete_vm.sudo().write({"active": False})
+                    archived += len(obsolete_vm)
 
         icp.set_param(NETBOX_LAST_SYNC_ALL_KEY, fields.Datetime.now())
         active_count = self.sudo().search_count([("active", "=", True)])
@@ -670,7 +788,7 @@ class ConfigurationItem(models.Model):
 
     @api.model
     def action_sync_all_from_netbox(self):
-        """Holt alle Devices von NetBox (Kap. 9.4). Button: ruft _run_sync_all_from_netbox, zeigt Notification."""
+        """Holt alle CI (Devices und VMs) von NetBox (Kap. 9.4). Button: ruft _run_sync_all_from_netbox, zeigt Notification."""
         try:
             result = self.with_context(
                 force_full_sync=self.env.context.get("force_full_sync", False)

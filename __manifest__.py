@@ -8,7 +8,7 @@
 
 {
     "name": "NT:ServiceMan",
-    "version": "1.2.2",
+    "version": "2.0.0",
     "author": "NETHINKS GmbH",
     "summary": "Abbildung von Configuration Items (CI) aus NetBox, Vertragszuordnung",
     "category": "Services",
@@ -38,6 +38,7 @@
             "nt_serviceman/static/src/css/ci_class_services.css",
         ],
     },
+    "pre_init_hook": "pre_init_hook",
     "installable": True,
     "application": True,
 }

@@ -212,7 +212,7 @@ Unter **NT:ServiceMan > Konfiguration** werden folgende Bereiche bereitgestellt 
 | Feld             | Typ    | Beschreibung                                      |
 |------------------|--------|---------------------------------------------------|
 | **NetBox-URL**   | Text   | Basis-URL der NetBox-Instanz (z.B. https://netbox.example.com) |
-| **Test URL**     | Button | Prüft die Verbindung: (1) Server erreichbar, (2) REST-API antwortet, (3) NetBox-API-Struktur erkannt |
+| **Test URL**     | Button | Prüft die Verbindung: (1) Server erreichbar, (2) REST-API antwortet, (3) NetBox-API-Struktur erkannt, (4) API-Token gültig, (5) Virtualization-API (VMs) erreichbar (informativ) |
 | **Test-Ergebnis**| Text   | Ausgabe des URL-Tests (readonly)                  |
 
 **Leistungen** (v0.9.2): Editierbare Liste der erbringbaren Leistungen; vgl. Kap. 8.7.
@@ -274,6 +274,15 @@ Die Bedienoberfläche (NT:ServiceMan > Konfiguration > Einstellungen) bleibt unv
   - Keine lokalen Hosts (localhost, 127.x, ::1, 0.0.0.0)
   - Keine privaten, link-local oder reservierten IP-Adressen
   - Keine gefährlichen Zeichen (@, .., Nullbytes)
+
+### 7.2.2 Virtualization-API-Test (v1.2.3 – VM-Vorbereitung)
+
+Der Button **„Test URL“** prüft zusätzlich, ob die **Virtualization-API** erreichbar ist (`/api/virtualization/virtual-machines/?limit=1`). Dies ist informativ für den geplanten VM-Sync (Kap. 8.13, ANALYSE-VM-Support).
+
+- **Erfolg (200):** Ausgabe „✅ 5. Virtualization-API (VMs) erreichbar.“
+- **Fehler (404 o.ä.):** Ausgabe „⚠️ 5. Virtualization-API (VMs) nicht erreichbar – VM-Sync wird ggf. fehlschlagen.“
+
+Der Virtualization-Test blockiert **nicht** das Speichern der URL – NetBox-Instanzen ohne Virtualization können weiterhin für Devices genutzt werden.
 
 ### 7.3 Rechte- und Sicherheitskonzept
 
@@ -342,9 +351,11 @@ Der Chatter (Nachrichten, Aktivitäten, Änderungshistorie) wird nur für ausgew
 | netbox_last_sync | Datetime | System | Zeitpunkt letzter Abruf | ✓ |
 | netbox_sync_state | Selection | System | ok / failed | ✓ |
 | netbox_sync_error | Text | System | Fehlermeldung (nur bei Fehler sichtbar) | ✓ |
-| netbox_manufacturer | Char | NetBox | Hersteller (device_type.manufacturer.name); für CPE/CVE | ✓ |
-| netbox_model | Char | NetBox | Modell (device_type.model); für CPE/CVE | ✓ |
-| netbox_firmware_version | Char | NetBox | Firmware-Version (custom_fields.firmware_version o.ä.); für CPE/CVE | ✓ |
+| netbox_manufacturer | Char | NetBox | Hersteller (device_type.manufacturer bzw. platform.manufacturer); für CPE/CVE | ✓ |
+| netbox_model | Char | NetBox | Hardware-Modell (device_type.model; nur bei Devices, bei VMs leer) | ✓ |
+| netbox_platform | Char | NetBox | Software/OS (platform.name; z.B. „FortiOS 7.2“, „Ubuntu 22.04“); für CPE/CVE; ersetzt netbox_firmware_version (geplant v1.2.x) | geplant |
+| netbox_source | Selection | manuell/NetBox | Herkunft: „Physisches Gerät“ (device) oder „Virtuelle Maschine“ (vm); für API-Aufruf und Constraint (geplant v1.2.x) | geplant |
+| ~~netbox_firmware_version~~ | – | – | **Entfällt** (v1.2.x): Ersetzt durch netbox_platform aus platform.name; custom_fields nicht mehr verwendet | entfällt |
 | ci_class_id | Many2one | Mapping | CI-Klasse (via Role-Mapping, v0.9.1) | v0.9.1 |
 | cmdb_id | Integer | manuell | Legacy CMDB-ID (Abwärtskompatibilität); optional | v0.9.1 |
 
@@ -358,6 +369,7 @@ Diese drei Felder werden in `_extract_netbox_fields()` aus dem NetBox-Device-JSO
 ### 8.2 Feldregeln
 
 - `netbox_id` ist editierbar; **nur Ziffern erlaubt** (NetBox Device-ID ist numerisch)
+- `netbox_source` ist editierbar bis zum ersten NetBox-Abruf; danach readonly (Kap. 8.13)
 - alle anderen `netbox_*` Felder sind readonly
 - **netbox_created / netbox_last_updated:** Gleiche Sync-Logik wie bei NetBox Device Roles (Kap. 8.5): Feld leer oder NetBox jünger → Aktualisierung; sonst keine Änderung.
 - **ci_class_id:** Wird aus dem Mapping Device Role → CI-Klasse abgeleitet (readonly). Existiert ein Mapping für die NetBox-Device-Role des Geräts, wird die CI-Klasse angezeigt; sonst bleibt das Feld leer.
@@ -645,9 +657,37 @@ Die Umsetzung erfolgt in **drei aufeinander aufbauenden Teilen**, die nacheinand
 
 **Abnahme:** Pro Leistung können erforderliche Felder per Häkchen markiert und gespeichert werden.
 
+#### 8.11.1c Teilschritt: VM-Felder (geplant v1.2.x – VM-Support)
+
+**Kontext:** Leistungen wie Update-Service, Monitoring, CVE-Monitoring gelten für physische Geräte **und** virtuelle Maschinen (VMs). VMs haben in NetBox ein anderes Schema als Devices (z. B. `platform.name`, `platform.manufacturer`, `cluster` statt `device_type.*`). Vgl. [ANALYSE-VM-Support.md](ANALYSE-VM-Support.md).
+
+**Ziel:** Pro Leistung zusätzlich definierbar: welche NetBox-VM-Felder erforderlich sind, damit die Leistung für ein VM-CI erbracht werden kann.
+
+**Technik:**
+- VM-Schema: Schema für `/api/virtualization/virtual-machines/` aus NetBox-OpenAPI-Schema extrahieren
+- Pro Leistung: zusätzliches Feld `required_vm_field_ids` (analog `required_device_field_ids`) – Relation zu VM-Feldzeilen
+- „CI-Felder holen“ (Button in Konfiguration): lädt sowohl Device- als auch VM-Feldliste aus dem Schema; speichert beide in `ir.config_parameter`
+- Beim CI-Abruf und bei der Prüfung `_compute_service_fields_status`: je nach `netbox_source` des CI werden die Device- oder VM-Feldpfade geprüft
+
+**Abnahme:** Pro Leistung können erforderliche VM-Felder per Häkchen markiert werden; die Prüfung am CI berücksichtigt `netbox_source` (Device vs. VM).
+
+#### 8.11.1d Formular-Anordnung im Leistung-Formular
+
+Im Leistung-Formular (Konfiguration > Leistungen) werden die NetBox-Feldlisten wie folgt dargestellt:
+
+| Bereich | Beschreibung |
+|--------|--------------|
+| **NetBox-Device-Felder (Häkchen = erforderlich)** | Liste der Device-Felder aus dem NetBox-Schema; Häkchen = für diese Leistung bei physischen Geräten erforderlich |
+| **Trenner** | Visueller Trenner zwischen Device- und VM-Feldern |
+| **NetBox-VM-Felder (Häkchen = erforderlich)** | Liste der VM-Felder aus dem NetBox-Schema; Häkchen = für diese Leistung bei virtuellen Maschinen erforderlich |
+
+**Reihenfolge:** Beide Listen erscheinen unterhalb des Bereichs „Verfügbare CI-Klassen“; zuerst Device-Felder, dann Trenner, dann VM-Felder.
+
 ---
 
 **Beispiel (nach 8.11.1b):** Leistung „Proaktiver Sicherheits-Service (CVE)“ – erforderlich: Hersteller (device_type.manufacturer), Gerätebezeichnung/Modell (device_type), ggf. weitere Felder je nach Abfrage-Logik des CVE-Werkzeugs
+
+**Beispiel (nach 8.11.1c):** Dieselbe Leistung für VMs – erforderlich: platform.name, platform.manufacturer (oder vergleichbare VM-Pfade)
 
 ---
 
@@ -681,6 +721,13 @@ Die Umsetzung erfolgt in **drei aufeinander aufbauenden Teilen**, die nacheinand
 - Berechnung: Pro CI, pro gebuchter Leistung prüfen, ob alle erforderlichen Felder gefüllt sind
 - Darstellung: Icon-Spalte am CI – grünes Häkchen (vollständig) / gelbes Dreieck (fehlende Felder)
 
+**Unterscheidung Device vs. VM (ab v1.2.x – Kap. 8.11.1c):**  
+Die Prüfung berücksichtigt die NetBox-Quelle (`netbox_source`) des CI:
+- **Physisches Gerät** (`device`): Es werden die in den Leistungen markierten **Device-Felder** geprüft (`required_device_field_ids`, z.B. `device_type.manufacturer`, `device_type.model`).
+- **Virtuelle Maschine** (`vm`): Es werden die in den Leistungen markierten **VM-Felder** geprüft (`required_vm_field_ids`, z.B. `platform.name`, `platform.manufacturer`).
+
+Die Vertragslogik (CMDB-Tab, CI-Indikator) verwendet somit stets die zur Quelle passende Feldliste – Devices und VMs können unterschiedliche Pflichtfelder pro Leistung haben.
+
 **Abnahme:** In der CI-Liste des Vertrags ist bei jedem CI der Status (vollständig/unvollständig) sichtbar.
 
 ---
@@ -694,6 +741,9 @@ Die Umsetzung erfolgt in **drei aufeinander aufbauenden Teilen**, die nacheinand
 - Pro gebuchter Leistung: wenn Felder fehlen → Liste der fehlenden Felder anzeigen
 - Link zu NetBox (netbox_url) prominent – Nutzer öffnet NetBox und pflegt dort nach
 - Nach NetBox-Aktualisierung: Button „Hole von NetBox“ am CI → erneuter Abruf, Status aktualisiert sich
+
+**Unterscheidung Device vs. VM (ab v1.2.x – Kap. 8.11.1c):**  
+Welche Felder als fehlend angezeigt werden, hängt von der NetBox-Quelle des CI ab: Bei Device-CIs die Device-Feldpfade; bei VM-CIs die VM-Feldpfade. Die Anzeige „Leistung X: fehlende Felder [Liste]“ zeigt somit stets die relevanten Felder für den jeweiligen CI-Typ.
 
 **Abnahme:** Im CI-Formular sind fehlende Felder pro Leistung benannt; NetBox-Link ist verfügbar.
 
@@ -710,17 +760,79 @@ Die Anzeige der rohen API-Antwort (Roh-JSON) aus NetBox unterliegt folgender Ein
 
 ---
 
+### 8.13 CI-Formular: NetBox-Quelle und Felder (VM-Vorbereitung, geplant v1.2.x)
+
+**Kontext:** NetBox unterscheidet physische Geräte (DCIM Devices) und virtuelle Maschinen (Virtualization VMs). Beide sollen als CI abgebildet werden. Vgl. [ANALYSE-VM-Support.md](ANALYSE-VM-Support.md).
+
+**Ziel:** CI-Formular und manueller Abruf „Hole NetBox-Item“ vorbereiten, damit der Nutzer sowohl Devices als auch VMs laden kann.
+
+#### 8.13.1 Neue Felder am CI
+
+| Feld | Typ | Beschreibung | Herkunft |
+|------|-----|--------------|----------|
+| **netbox_source** | Selection | Herkunft des Objekts in NetBox | manuell (vor Abruf) |
+| **netbox_platform** | Char | Plattform/OS (z.B. „FortiOS 7.2“, „Ubuntu 22.04“) | NetBox: `platform.name` |
+
+**netbox_source – Auswahlwerte (kluge Bezeichnungen):**
+
+| Technischer Wert | Anzeige (string) |
+|------------------|------------------|
+| `device` | Physisches Gerät |
+| `vm` | Virtuelle Maschine |
+
+- Default: `device` (Abwärtskompatibilität für bestehende CI).
+- Editierbar vor dem ersten NetBox-Abruf; nach dem Abruf readonly (wird aus der NetBox-Struktur abgeleitet).
+
+**netbox_platform:** Readonly; wird aus `platform.name` (NetBox) befüllt – sowohl bei Devices als auch bei VMs. Enthält die OS-/Software-Version. Vgl. Kap. 8.1.
+
+#### 8.13.2 Feldänderungen (netbox_firmware_version)
+
+- **netbox_firmware_version** wird **entfernt**. Die OS-Version wird ausschließlich über **netbox_platform** (aus `platform.name`) abgebildet. Custom Fields für Firmware werden nicht mehr verwendet.
+
+#### 8.13.3 Anordnung im CI-Formular
+
+- **netbox_id** bleibt an der bisherigen Position (linke Spalte, oberhalb der NetBox-Daten).
+- **netbox_source** kommt in die rechte Spalte, direkt unter das Feld **NetBox-Link** (netbox_display_link).
+- **Schreibschutz:** Nach dem ersten erfolgreichen Abruf („Hole NetBox-Item“) ist `netbox_source` nur noch anzeigbar (readonly), nicht mehr editierbar.
+- **NetBox-Daten (readonly):** `netbox_platform` ergänzen (nach netbox_model); `netbox_firmware_version` entfernen.
+
+#### 8.13.4 Button „Hole NetBox-Item“ – Voraussetzungen
+
+Der Nutzer muss **mindestens** Folgendes angeben, bevor der Abruf ausgeführt wird:
+
+| Feld | Pflicht | Beschreibung |
+|------|---------|--------------|
+| **netbox_id** | ja | ID in NetBox (nur Ziffern) |
+| **netbox_source** | ja | Objekttyp: „Physisches Gerät“ oder „Virtuelle Maschine“ |
+
+- Sind beide Felder ausgefüllt, wird der passende NetBox-Endpoint aufgerufen (Device oder VM).
+- Fehlt eines der beiden: Fehlermeldung anzeigen, kein Abruf durchführen.
+
+**Fehlermeldungen:**
+- Keine NetBox-ID: „Bitte geben Sie die NetBox-ID ein.“
+- Kein Typ (netbox_source leer): „Bitte wählen Sie den Objekttyp (Physisches Gerät oder Virtuelle Maschine).“
+
+**Abnahme:**
+- Formular zeigt `netbox_source` und `netbox_id` oberhalb des Buttons.
+- Button „Hole NetBox-Item“ führt nur aus, wenn beide Felder gesetzt sind.
+- Bei fehlendem Feld erscheint eine verständliche Fehlermeldung.
+
+---
+
 ## 9. REST-Integration NetBox → Odoo
 
 ### 9.1 Auslöser (v0.9)
 
-- Manuell durch Benutzeraktion: Button **„Hole von NetBox“**
+- Manuell durch Benutzeraktion: Button **„Hole von NetBox“** bzw. **„Hole NetBox-Item“**
 - Bedienbar für **NT:ServiceMan Admin** und **NT:ServiceMan Nutzer**
-- **Voraussetzung:** Das Feld NetBox-ID muss mit einer gültigen ID ausgefüllt sein; sonst ist kein Abruf möglich.
+- **Voraussetzung (ab v1.2.x):** Das Feld **NetBox-ID** und das Feld **NetBox-Quelle** (netbox_source: Physisches Gerät oder Virtuelle Maschine) müssen ausgefüllt sein; sonst ist kein Abruf möglich.
+- **Voraussetzung (bisher):** Nur NetBox-ID war erforderlich.
 
 ### 9.2 REST-Aufruf
 
-- Endpoint: `/api/dcim/devices/{netbox_id}/`
+- **Endpoint** (abhängig von `netbox_source`):
+  - `netbox_source = 'device'`: `/api/dcim/devices/{netbox_id}/`
+  - `netbox_source = 'vm'`: `/api/virtualization/virtual-machines/{netbox_id}/`
 - Authentifizierung: NetBox API Token
 - Richtung: Odoo → NetBox (read only)
 
@@ -742,8 +854,9 @@ Die Anzeige der rohen API-Antwort (Roh-JSON) aus NetBox unterliegt folgender Ein
 
 | Situation | Verhalten |
 |--------|----------|
-| NetBox-ID fehlt | Kein Sync möglich |
-| Gerät nicht gefunden | Sync-Status = failed |
+| NetBox-ID fehlt | Kein Abruf möglich; Fehlermeldung |
+| NetBox-Quelle fehlt | Kein Abruf möglich; Fehlermeldung (Kap. 8.13) |
+| Gerät/VM nicht gefunden | Sync-Status = failed |
 | API-Fehler | Fehlertext speichern |
 | Erfolgreicher Abruf | Sync-Status = ok |
 
@@ -753,19 +866,35 @@ Fehler führen nicht zum Löschen oder Überschreiben bestehender Daten.
 
 ### 9.4 Sync aller CI aus NetBox (v1.1)
 
-**Ziel:** Alle Devices aus NetBox abrufen und als CI in Odoo anlegen bzw. aktualisieren – nicht nur einzelne CI per Button „Hole von NetBox“.
+**Ziel:** Alle CI (Devices und VMs) aus NetBox abrufen und als CI in Odoo anlegen bzw. aktualisieren – nicht nur einzelne CI per Button „Hole NetBox-Item“.
 
 **Auslöser:** Button „Alle CI holen“ im Config-Formular (Einstellungen NT:ServiceMan), unter NetBox-Synchronisation.
 
-**Endpoint:** `/api/dcim/devices/` (Liste mit Paginierung, alle Seiten werden abgerufen).
+**Endpoints (ab v1.2.x – VM-Support):**
 
-**Inkremental-Sync (Delta):** Ab dem zweiten Lauf wird nur nach geänderten Devices gefragt, um die Laufzeit zu verkürzen:
+| Quelle | NetBox-Endpoint | `netbox_source` am CI |
+|--------|-----------------|------------------------|
+| Physische Geräte | `/api/dcim/devices/` | `device` |
+| Virtuelle Maschinen | `/api/virtualization/virtual-machines/` | `vm` |
 
-- NetBox unterstützt den Filter `last_updated__gte=<ISO8601-Timestamp>`.
-- Der Zeitpunkt des letzten erfolgreichen Syncs wird in `ir.config_parameter` gespeichert (`nt_serviceman.netbox_last_sync_all_timestamp`).
-- Beim nächsten Lauf: `GET /api/dcim/devices/?last_updated__gte=<letzter_sync>` – nur geänderte Devices werden abgerufen.
+Beide Listen werden mit Paginierung abgerufen (alle Seiten). Die Reihenfolge ist unkritisch; empfohlen: zuerst Devices, dann VMs.
+
+**Einschränkung Virtualization-API:** Wenn die NetBox-Instanz keine Virtualization-API hat (404), wird nur der Device-Sync durchgeführt. Der Sync schlägt **nicht** fehl – VMs werden in diesem Fall schlicht nicht geladen.
+
+**Inkremental-Sync (Delta):** Ab dem zweiten Lauf wird nur nach geänderten Objekten gefragt, um die Laufzeit zu verkürzen:
+
+- NetBox unterstützt den Filter `last_updated__gte=<ISO8601-Timestamp>` – sowohl bei Devices als auch bei VMs.
+- Der Zeitpunkt des letzten erfolgreichen Syncs wird in `ir.config_parameter` gespeichert (`nt_serviceman.netbox_last_sync_all_timestamp`) – **ein gemeinsamer Zeitstempel** für beide Quellen.
+- Beim nächsten Lauf: Filter für Devices und VMs jeweils mit diesem Zeitstempel; nur geänderte Objekte werden abgerufen.
 - **Einschränkung:** NetBox setzt `last_updated` am Device nicht fort, wenn sich nur Child-Objekte (z. B. Interfaces) ändern. Bei reinen Device-Änderungen funktioniert der Filter zuverlässig.
 - **Vollabgleich:** Wenn kein gespeicherter Zeitpunkt vorhanden ist (erster Lauf) oder „Vollabgleich“ angefordert wird, erfolgt ein vollständiger Abruf ohne Filter. Nur dann wird die Archivierung (in NetBox entfernte CI) erkannt.
+
+**Archivierung (Vollabgleich):** Es werden **zwei getrennte Mengen** geführt:
+
+- Geräte, die nur unter `/api/dcim/devices/` vorkamen und jetzt fehlen → archivieren (nur CI mit `netbox_source='device'`).
+- VMs, die nur unter `/api/virtualization/virtual-machines/` vorkamen und jetzt fehlen → archivieren (nur CI mit `netbox_source='vm'`).
+
+Device-ID 1 und VM-ID 1 sind unterschiedliche NetBox-Objekte; die Mengen dürfen nicht vermischt werden.
 
 **Regeln:**
 
@@ -773,17 +902,20 @@ Fehler führen nicht zum Löschen oder Überschreiben bestehender Daten.
 |-------|-----------|
 | **Bestehende CI** | Update nur, wenn sich etwas geändert hat (Sync-Logik: Feld leer oder NetBox jünger → Aktualisierung) |
 | **Nichts löschen** | CI werden niemals physisch gelöscht |
-| **In NetBox entfernt** | CI, die in der NetBox-Liste nicht mehr vorkommen, werden lokal **archiviert** (`active=False`) – nur bei Vollabgleich erkennbar |
-| **Neu in NetBox** | Werden als neue CI angelegt |
+| **In NetBox entfernt** | CI, die in der jeweiligen NetBox-Liste (Devices bzw. VMs) nicht mehr vorkommen, werden lokal **archiviert** (`active=False`) – nur bei Vollabgleich erkennbar |
+| **Neu in NetBox** | Werden als neue CI angelegt; `netbox_source` wird entsprechend der Quelle gesetzt |
 | **Archivierte CI reaktivieren** | Wenn ein zuvor archiviertes CI wieder in NetBox erscheint, wird es reaktiviert (`active=True`) und aktualisiert |
+| **UNIQUE-Constraint** | `UNIQUE(netbox_source, netbox_id)` – Device-ID 1 und VM-ID 1 können beide existieren |
 
-**Technik:** Analog zu Device Roles (Kap. 8.5): Upsert-Logik über `netbox_id`; `netbox_last_updated` steuert die Sync-Entscheidung.
+**Technik:** Analog zu Device Roles (Kap. 8.5): Upsert-Logik über `(netbox_source, netbox_id)`; `netbox_last_updated` steuert die Sync-Entscheidung. Die Feld-Extraktion nutzt `_extract_netbox_fields` mit dem passenden JSON-Schema (Device vs. VM).
 
 **Rückmeldung:** Nach dem Sync wird eine Browser-Benachrichtigung angezeigt mit:
 - Anzahl neu angelegter CI
 - Anzahl aktualisierter CI
 - Anzahl archivierter CI (bei Vollabgleich)
 - Anzahl aktiver CI in Odoo (gesamt)
+
+**Abnahme:** „Alle CI holen“ lädt Devices und VMs; beide Quellen erscheinen als CI in Odoo mit korrektem `netbox_source`. Vollabgleich archiviert nur CI der jeweiligen Quelle, in der sie nicht mehr vorkommen.
 
 ---
 

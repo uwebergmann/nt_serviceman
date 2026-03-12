@@ -44,7 +44,7 @@
                         </group>
                         <group col="3">
                             <p class="text-muted mb-0" style="min-width: 20em;">
-                                Holt alle Geräte von NetBox. Neue anlegen, bestehende aktualisieren,
+                                Holt alle CI (Devices und VMs) von NetBox. Neue anlegen, bestehende aktualisieren,
                                 entfernte archivieren (nie löschen). „Alle CI holen“ nutzt Inkremental-Sync (nur Änderungen); „Vollabgleich“ holt alles und erkennt Archivierung.
                             </p>
                         </group>
@@ -54,9 +54,9 @@
                         </group>
                         <group col="3">
                             <p class="text-muted mb-0" style="min-width: 20em;">
-                                Lädt alle Gerätefelder aus dem NetBox-Schema und stellt sie als Auswahlliste
-                                in den Leistungen bereit. So legen Sie fest, welche NetBox-Felder für eine Leistung
-                                ausgefüllt sein müssen.
+                                Lädt Device- und VM-Felder aus dem NetBox-Schema und stellt sie in den Leistungen bereit.
+                                So legen Sie fest, welche NetBox-Felder für eine Leistung ausgefüllt sein müssen –
+                                getrennt für physische Geräte und virtuelle Maschinen.
                             </p>
                         </group>
                     </group>

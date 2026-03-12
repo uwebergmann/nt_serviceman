@@ -57,8 +57,19 @@
                     </group>
                     <group string="NetBox-Device-Felder (Häkchen = erforderlich)" col="1">
                         <field name="required_device_field_ids" nolabel="1"
-                               help="Häkchen = dieses Feld muss am CI ausgefüllt sein. Keine Einträge? Unter Konfiguration den Button „Device-Felder aus Schema laden“ ausführen.">
+                               help="Häkchen = dieses Feld muss am CI ausgefüllt sein (physische Geräte). Keine Einträge? Unter Konfiguration den Button „CI-Felder holen“ ausführen.">
                             <tree string="Device-Felder" editable="bottom" delete="false" create="false">
+                                <field name="is_required" string="Erforderlich"/>
+                                <field name="field_path" readonly="1"/>
+                                <field name="example_value" readonly="1"/>
+                            </tree>
+                        </field>
+                    </group>
+                    <separator/>
+                    <group string="NetBox-VM-Felder (Häkchen = erforderlich)" col="1">
+                        <field name="required_vm_field_ids" nolabel="1"
+                               help="Häkchen = dieses Feld muss am VM-CI ausgefüllt sein. Keine Einträge? Unter Konfiguration den Button „CI-Felder holen“ ausführen (lädt Device- und VM-Felder).">
+                            <tree string="VM-Felder" editable="bottom" delete="false" create="false">
                                 <field name="is_required" string="Erforderlich"/>
                                 <field name="field_path" readonly="1"/>
                                 <field name="example_value" readonly="1"/>

@@ -22,6 +22,8 @@ NETBOX_LAST_FULL_SYNC_STATE_KEY = "nt_serviceman.netbox_last_full_sync_state"
 NETBOX_LAST_FULL_SYNC_ERROR_KEY = "nt_serviceman.netbox_last_full_sync_error"
 NETBOX_DEVICE_FIELD_NAMES_KEY = "nt_serviceman.netbox_device_field_names"
 NETBOX_DEVICE_SAMPLE_KEY = "nt_serviceman.netbox_device_sample"
+NETBOX_VM_FIELD_NAMES_KEY = "nt_serviceman.netbox_vm_field_names"
+NETBOX_VM_SAMPLE_KEY = "nt_serviceman.netbox_vm_sample"
 
 
 class NTServiceManConfig(models.Model):
@@ -195,6 +197,26 @@ class NTServiceManConfig(models.Model):
             return False, _("API-Token hat keine Berechtigung.")
         return True, None
 
+    def _run_netbox_virtualization_test(self, base_url):
+        """Prüft Virtualization-API (/api/virtualization/virtual-machines/).
+        Returns (success, error_msg). Informativ – blockiert Speichern der URL nicht."""
+        if not base_url:
+            return False, "Keine URL."
+        kwargs = {"timeout": 10, "verify": False}
+        token = (self.netbox_api_token or "").strip()
+        if token:
+            kwargs["headers"] = {"Authorization": f"Token {token}"}
+        vm_url = f"{base_url.rstrip('/')}/api/virtualization/virtual-machines/?limit=1"
+        try:
+            r = requests.get(vm_url, **kwargs)
+        except requests.RequestException as e:
+            return False, str(e)
+        if r.status_code == 200:
+            return True, None
+        if r.status_code == 404:
+            return False, _("Endpoint nicht vorhanden (404).")
+        return False, _("Status %s") % r.status_code
+
     def action_test_netbox_url(self):
         """Prüft NetBox-URL: (1) Server erreichbar, (2) NetBox erkannt, (3) REST-API."""
         self.ensure_one()
@@ -220,6 +242,12 @@ class NTServiceManConfig(models.Model):
             lines.append("⚠️ 4. Kein API-Token konfiguriert – Device-Abfragen werden fehlschlagen.")
         else:
             lines.append("✅ 4. API-Token gültig.")
+        # Virtualization-API (VMs) prüfen
+        vm_ok, vm_err = self._run_netbox_virtualization_test(base_url)
+        if vm_ok:
+            lines.append("✅ 5. Virtualization-API (VMs) erreichbar.")
+        else:
+            lines.append(f"⚠️ 5. Virtualization-API (VMs): {vm_err}")
         self.netbox_test_result = "\n".join(lines)
 
     def action_fetch_device_roles_from_netbox(self):
@@ -350,6 +378,54 @@ class NTServiceManConfig(models.Model):
             return {}
 
     @api.model
+    def _get_netbox_vm_field_names(self):
+        """Liefert die gecachten NetBox-VM-Feldnamen (aus Schema)."""
+        icp = self.env["ir.config_parameter"].sudo()
+        raw = icp.get_param(NETBOX_VM_FIELD_NAMES_KEY, "") or ""
+        if not raw.strip():
+            return []
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return []
+
+    @api.model
+    def _get_netbox_vm_sample(self):
+        """Liefert die gecachte Beispiel-VM (für Anzeige mit Werten)."""
+        icp = self.env["ir.config_parameter"].sudo()
+        raw = icp.get_param(NETBOX_VM_SAMPLE_KEY, "") or ""
+        if not raw.strip():
+            return {}
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return {}
+
+    @api.model
+    def _get_netbox_vm_field_names(self):
+        """Liefert die gecachten NetBox-VM-Feldnamen (aus Schema)."""
+        icp = self.env["ir.config_parameter"].sudo()
+        raw = icp.get_param(NETBOX_VM_FIELD_NAMES_KEY, "") or ""
+        if not raw.strip():
+            return []
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return []
+
+    @api.model
+    def _get_netbox_vm_sample(self):
+        """Liefert das gecachte Beispiel-VM (für Anzeige mit Werten)."""
+        icp = self.env["ir.config_parameter"].sudo()
+        raw = icp.get_param(NETBOX_VM_SAMPLE_KEY, "") or ""
+        if not raw.strip():
+            return {}
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return {}
+
+    @api.model
     def _get_value_by_path(self, data, path):
         """Liest Wert aus verschachteltem Dict via Pfad (z.B. device_type.manufacturer.name)."""
         if not data or not path:
@@ -461,6 +537,50 @@ class NTServiceManConfig(models.Model):
         )
         return sorted(set(fields_raw))
 
+    def _extract_vm_fields_from_schema(self, schema_dict):
+        """Extrahiert VM-Felder aus NetBox OpenAPI-Schema (Virtualization)."""
+        if not schema_dict or not isinstance(schema_dict, dict):
+            return []
+        paths = schema_dict.get("paths") or {}
+        comp_schemas = {}
+        comp = schema_dict.get("components")
+        if isinstance(comp, dict):
+            comp_schemas = comp.get("schemas") or {}
+        if not comp_schemas and isinstance(schema_dict.get("schemas"), dict):
+            comp_schemas = schema_dict.get("schemas")
+        vm_schema = None
+        for path_key, path_val in sorted(paths.items(), key=lambda x: ("{id}" not in x[0], x[0])):
+            if "virtual-machines" not in path_key or not isinstance(path_val, dict):
+                continue
+            get_spec = path_val.get("get")
+            if not get_spec or not isinstance(get_spec, dict):
+                continue
+            responses = (get_spec.get("responses") or {}).get("200") or {}
+            content = (responses.get("content") or {}).get("application/json") or {}
+            schema = content.get("schema")
+            if not schema:
+                continue
+            ref = schema.get("$ref")
+            if ref:
+                name = ref.split("/")[-1]
+                vm_schema = comp_schemas.get(name) or schema
+            else:
+                vm_schema = schema
+            if vm_schema:
+                break
+        if not vm_schema:
+            for name, sch in comp_schemas.items():
+                if "virtual" in name.lower() or "vm" in name.lower():
+                    vm_schema = sch
+                    break
+        if not vm_schema:
+            return []
+        props = vm_schema.get("properties") or {}
+        fields_raw = self._extract_fields_from_schema_properties(
+            props, {"schemas": comp_schemas}
+        )
+        return sorted(set(fields_raw))
+
     @api.model
     def _expand_custom_fields_in_field_list(self, fields_list, sample_device=None):
         """Ersetzt 'custom_fields' durch einzelne Felder (custom_fields.license, etc.).
@@ -527,8 +647,60 @@ class NTServiceManConfig(models.Model):
         fields_list = sorted(set(self._extract_fields_from_dict(device)))
         return fields_list, device
 
+    VM_SAMPLE_ID = 649  # VM-ID für Beispielwerte (Anzeige mit konkreten Werten)
+
+    def _fetch_vm_by_id(self, base_url, token, vm_id):
+        """Lädt eine VM anhand ihrer NetBox-ID."""
+        if not vm_id:
+            return None
+        headers = {"Accept": "application/json"}
+        if token:
+            headers["Authorization"] = f"Token {token}"
+        base_url = base_url.rstrip("/")
+        detail_url = f"{base_url}/api/virtualization/virtual-machines/{vm_id}/"
+        try:
+            r = requests.get(detail_url, headers=headers, timeout=30, verify=False)
+            r.raise_for_status()
+            return r.json()
+        except (requests.RequestException, json.JSONDecodeError):
+            return None
+
+    def _fetch_one_vm_json(self, base_url, token, preferred_vm_id=None):
+        """Lädt eine VM als Beispiel (für Anzeige mit Werten).
+        preferred_vm_id: Wenn gesetzt, wird diese VM zuerst versucht (z.B. 649)."""
+        if preferred_vm_id:
+            vm = self._fetch_vm_by_id(base_url, token, preferred_vm_id)
+            if vm:
+                return vm
+        headers = {"Accept": "application/json"}
+        if token:
+            headers["Authorization"] = f"Token {token}"
+        base_url = base_url.rstrip("/")
+        list_url = f"{base_url}/api/virtualization/virtual-machines/?limit=1"
+        try:
+            r = requests.get(list_url, headers=headers, timeout=30, verify=False)
+            r.raise_for_status()
+            data = r.json()
+        except (requests.RequestException, json.JSONDecodeError):
+            return None
+        results = data.get("results") or []
+        if not results:
+            return None
+        vm_id = results[0].get("id")
+        if not vm_id:
+            return None
+        return self._fetch_vm_by_id(base_url, token, vm_id)
+
+    def _fetch_vm_fields_from_sample(self, base_url, token):
+        """Fallback: Eine VM abrufen und Feldnamen aus dem JSON extrahieren."""
+        vm = self._fetch_one_vm_json(base_url, token, self.VM_SAMPLE_ID)
+        if not vm:
+            return [], None
+        fields_list = sorted(set(self._extract_fields_from_dict(vm)))
+        return fields_list, vm
+
     def action_refresh_netbox_device_fields(self):
-        """Lädt Device-Felder aus NetBox-Schema und speichert sie (Kap. 8.11.1a)."""
+        """Lädt Device- und VM-Felder aus NetBox-Schema und speichert sie (Kap. 8.11.1a, 8.11.1c)."""
         self.ensure_one()
         base_url, token = self._get_netbox_params()
         if not base_url:
@@ -550,6 +722,8 @@ class NTServiceManConfig(models.Model):
             schema_dict = r.json()
         except json.JSONDecodeError:
             schema_dict = None
+
+        # Device-Felder
         fields_list = []
         sample_device = None
         if schema_dict:
@@ -567,22 +741,56 @@ class NTServiceManConfig(models.Model):
             )
         if not sample_device:
             sample_device = self._fetch_one_device_json(base_url, token)
-        # custom_fields in separate Felder aufteilen (Kap. 8.11; Benutzer legen weitere an)
-        fields_list = self._expand_custom_fields_in_field_list(fields_list, sample_device)
+        fields_list = self._expand_custom_fields_in_field_list(
+            fields_list, sample_device
+        )
+
+        # VM-Felder (optional – Virtualization-API kann fehlen)
+        vm_fields_list = []
+        sample_vm = None
+        if schema_dict:
+            vm_fields_list = self._extract_vm_fields_from_schema(schema_dict)
+        if not vm_fields_list:
+            vm_fields_list, sample_vm = self._fetch_vm_fields_from_sample(
+                base_url, token
+            )
+        # Beispiel-VM für Anzeige der example_value: bevorzugt VM-ID 649
+        sample_vm = sample_vm or self._fetch_vm_by_id(
+            base_url, token, self.VM_SAMPLE_ID
+        )
+        if not sample_vm:
+            sample_vm = self._fetch_one_vm_json(base_url, token)
+        if sample_vm and vm_fields_list:
+            vm_fields_list = self._expand_custom_fields_in_field_list(
+                vm_fields_list, sample_vm
+            )
+
         icp = self.env["ir.config_parameter"].sudo()
         icp.set_param(NETBOX_DEVICE_FIELD_NAMES_KEY, json.dumps(fields_list))
         icp.set_param(
             NETBOX_DEVICE_SAMPLE_KEY,
             json.dumps(sample_device) if sample_device else "",
         )
+        icp.set_param(NETBOX_VM_FIELD_NAMES_KEY, json.dumps(vm_fields_list))
+        icp.set_param(
+            NETBOX_VM_SAMPLE_KEY,
+            json.dumps(sample_vm) if sample_vm else "",
+        )
+
         # Feldlisten aller Leistungen mit neuer Konfiguration synchronisieren
-        self.env["nt_serviceman.service"].search([])._ensure_required_device_field_lines()
+        services = self.env["nt_serviceman.service"].search([])
+        services._ensure_required_device_field_lines()
+        services._ensure_required_vm_field_lines()
+
+        msg_parts = [f"{len(fields_list)} Device-Felder"]
+        if vm_fields_list:
+            msg_parts.append(f"{len(vm_fields_list)} VM-Felder")
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
-                "title": "Device-Felder geladen",
-                "message": f"{len(fields_list)} Felder aus NetBox-Schema extrahiert.",
+                "title": "CI-Felder geladen",
+                "message": "; ".join(msg_parts) + " aus NetBox-Schema extrahiert.",
                 "type": "success",
                 "sticky": False,
             },
