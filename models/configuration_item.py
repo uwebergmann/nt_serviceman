@@ -471,13 +471,42 @@ class ConfigurationItem(models.Model):
                     markupsafe.escape(rec.netbox_display or "")
                 )
 
+    def _enrich_device_type_from_api(self, data, base_url, headers):
+        """Holt vollständigen device_type von NetBox; Device-Antworten enthalten oft nur ID oder Kurzform.
+
+        NetBox liefert device_type teils als reine ID (int) oder als Kurzobjekt ohne
+        manufacturer/model. Holt DeviceType-Details nach und ersetzt device_type in data.
+        """
+        raw = data.get("device_type")
+        dt_id = None
+        if isinstance(raw, (int, float)):
+            dt_id = int(raw)
+        elif isinstance(raw, dict) and raw.get("id"):
+            dt_id = int(raw["id"])
+        if not dt_id:
+            return data
+        try:
+            dt_url = f"{base_url.rstrip('/')}/api/dcim/device-types/{dt_id}/"
+            r = requests.get(dt_url, headers=headers, timeout=10, verify=False)
+            r.raise_for_status()
+            full_dt = r.json()
+        except Exception:
+            return data
+        data = dict(data)
+        data["device_type"] = full_dt
+        return data
+
     def _extract_netbox_fields(self, data):
         """Extrahiert Anzeigename, Serial, Hardware-Typ, Rolle, Tenant, CPE-Felder und Timestamps aus NetBox-JSON.
 
         Unterstützt Device (dcim) und VM (virtualization) – Struktur wird anhand vorhandener Keys erkannt.
         """
         data = data or {}
-        is_vm = "cluster" in data or ("device_type" not in data and "platform" in data)
+        # Physische Geräte haben "cluster": null; VMs haben cluster als Objekt. Nur bei echtem
+        # Cluster oder bei fehlendem device_type + vorhandener platform als VM behandeln.
+        is_vm = bool(data.get("cluster")) or (
+            "device_type" not in data and bool(data.get("platform"))
+        )
         display = data.get("display") or data.get("name") or ""
         self.netbox_display = display
         if display:
@@ -503,9 +532,12 @@ class ConfigurationItem(models.Model):
             )
             manufacturer = device_type.get("manufacturer") or {}
             self.netbox_manufacturer = (
-                manufacturer.get("name") if isinstance(manufacturer, dict) else ""
+                (manufacturer.get("name") or manufacturer.get("display"))
+                if isinstance(manufacturer, dict) else ""
             )
-            self.netbox_model = device_type.get("model") or ""
+            self.netbox_model = (
+                device_type.get("model") or device_type.get("slug") or ""
+            )
         role = data.get("role") or data.get("device_role")
         role_nb_id = None
         if isinstance(role, dict):
@@ -585,6 +617,11 @@ class ConfigurationItem(models.Model):
             r = requests.get(url, headers=headers, timeout=15, verify=False)
             r.raise_for_status()
             data = r.json()
+
+            # NetBox liefert device_type teils nur in Kurzform (id, url, display) ohne
+            # manufacturer und model – dann Hersteller/Modell separat holen.
+            if self.netbox_source == "device":
+                data = self._enrich_device_type_from_api(data, base_url, headers)
 
             # Immer aktualisieren bei manuellem Klick – Änderungen an verknüpften
             # Objekten (z.B. device_type.description) ändern device.last_updated nicht.
@@ -677,6 +714,10 @@ class ConfigurationItem(models.Model):
                             do_update = True
 
                     if do_update:
+                        if source == "device":
+                            item = existing._enrich_device_type_from_api(
+                                item, base_url, headers
+                            )
                         existing._extract_netbox_fields(item)
                         vals = {
                             "netbox_last_sync": fields.Datetime.now(),
@@ -692,6 +733,10 @@ class ConfigurationItem(models.Model):
                         "netbox_id": nb_id_str,
                         "netbox_source": source,
                     })
+                    if source == "device":
+                        item = new_ci._enrich_device_type_from_api(
+                            item, base_url, headers
+                        )
                     new_ci._extract_netbox_fields(item)
                     new_ci.sudo().write({
                         "netbox_last_sync": fields.Datetime.now(),

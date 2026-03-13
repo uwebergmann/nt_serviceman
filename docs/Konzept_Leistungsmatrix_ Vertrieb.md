@@ -149,12 +149,14 @@ def _prepare_contract_values(self, **kwargs):
 - Keine Änderung der Vertragslogik.
 - Nutzer bekommt einen klaren Einstieg zur Matrix, ohne den Vertrag manuell zu suchen.
 
-## Geplante technische Schritte (Option A)
+**Stand:** Option A wird **nicht umgesetzt**. Der Vertrag ist bereits vom Angebot aus erreichbar (z.B. über die Angebotszeile); die Leistungsmatrix kann dort direkt gesehen und bearbeitet werden. Ein zusätzlicher Tab auf dem Angebotsformular erübrigt sich.
 
-1. **Modelle:** `sale.order` um computed field `recurring_contract_ids` erweitern (falls nicht vorhanden).
-2. **View:** Angebotsformular erben und Tab „Leistungsmatrix“ ergänzen.
-3. **Action:** Methode `action_open_ci_class_matrix()` auf `sale.order`, die den ersten wiederkehrenden Vertrag öffnet (oder eine Auswahl, wenn mehrere).
-4. **Sichtbarkeit:** Tab nur anzeigen, wenn `recurring_contract_ids` nicht leer ist.
+## Geplante technische Schritte (Option A) – nicht umgesetzt
+
+1. ~~**Modelle:** `sale.order` um computed field `recurring_contract_ids` erweitern (falls nicht vorhanden).~~
+2. ~~**View:** Angebotsformular erben und Tab „Leistungsmatrix“ ergänzen.~~
+3. ~~**Action:** Methode `action_open_ci_class_matrix()` auf `sale.order`, die den ersten wiederkehrenden Vertrag öffnet (oder eine Auswahl, wenn mehrere).~~
+4. ~~**Sichtbarkeit:** Tab nur anzeigen, wenn `recurring_contract_ids` nicht leer ist.~~
 
 ---
 

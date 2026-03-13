@@ -751,7 +751,7 @@ Welche Felder als fehlend angezeigt werden, hängt von der NetBox-Quelle des CI 
 
 **Reihenfolge:** Teil 1 → Teil 2 → Teil 3 (jeweils baut auf dem Vorherigen auf).
 
-### 8.12 NetBox-Rohdaten / Debug-Anzeige (Sicherheit, geplant v1.2)
+### 8.12 NetBox-Rohdaten / Debug-Anzeige (Sicherheit, umgesetzt v1.2)
 
 Die Anzeige der rohen API-Antwort (Roh-JSON) aus NetBox unterliegt folgender Einschränkung:
 
@@ -1132,7 +1132,7 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | 5 | **NetBox-Felder übernommen** | Anzeigename, Serial, Hardware-Typ, Rolle, Tenant (readonly) |
 | 6 | **Name** wird aus NetBox übernommen | Name optional, automatisch beim Abruf |
 | 7 | **NetBox-Link** | Anzeigename klickbar → öffnet Gerät in NetBox (neuer Tab) |
-| 8 | **Roh-JSON** für Debug | Vollständige API-Antwort sichtbar; **geplant v1.2:** nur für NT:ServiceMan Admin (groups-Attribut am Debug-Bereich) |
+| 8 | **Roh-JSON** für Debug | Vollständige API-Antwort sichtbar; nur für NT:ServiceMan Admin (groups-Attribut am Debug-Bereich) | v1.2 |
 | 9 | **Einstellungen-Überschrift** | „Einstellungen NT:ServiceMan“ statt technischem Namen |
 | 10 | **Rechte** | Config nur für NT:ServiceMan Admin |
 | 11 | **Kap. 8.1 Felder** | netbox_tenant_name, netbox_last_sync, netbox_sync_state, netbox_sync_error |
@@ -1168,7 +1168,7 @@ Diese Liste bildet den Umsetzungsstand ab (Stand: Fortlaufend aktualisiert).
 | 40 | **active am CI** (Kap. 8.1) | CI archivierbar (active=False); für in NetBox gelöschte Geräte | v1.1 |
 | 41 | **Alle CI holen** (Kap. 9.4) | Button im Config-Formular; holt alle Devices von /api/dcim/devices/ (mit Paginierung); Upsert + Archivieren | v1.1 |
 | 42 | **Delta-Sync + Notification** (Kap. 9.4) | Inkremental-Sync mit last_updated__gte; Benachrichtigung: X neu, Y aktualisiert, Z archiviert, N aktive CI; Vollabgleich-Button für Archivierung | v1.1 |
-| 43 | **Geplanter Vollabgleich** (Kap. 9.5) | ir.cron täglich; Chatter am Config für Log-Einträge; Vollabgleich-Button und Cron nutzen dieselbe Funktion (Test ohne Cron möglich) | v1.2 |
+| 43 | **Geplanter Vollabgleich** (Kap. 9.5) | ir.cron täglich; Chatter am Config für Log-Einträge; Vollabgleich-Button und Cron nutzen dieselbe Funktion (Test ohne Cron möglich) – Cron-Struktur vorhanden | v1.2 |
 | 44 | **CPE-Felder am CI** (Kap. 8.1) | netbox_manufacturer, netbox_model, netbox_firmware_version aus NetBox; Voraussetzung für CVE-Monitoring (nt_cve-automatisation) | v1.2.2 |
 
 ### Status NetBox (bereits vorhanden)

@@ -9,29 +9,24 @@ Neue Ideen werden hier gesammelt; bei geplanter Umsetzung wird Punkt für Punkt 
 
 | # | Feature | Aufwand | Priorität |
 |---|---------|---------|-----------|
-| 1 | Plan/Ist-Benachrichtigung (Chatter) | – | Optional |
-| 2 | Portal – CI-Klasse primär, Device Role als Detail | 4 h – 2 Tage | – |
+| ~~1~~ | ~~Plan/Ist-Benachrichtigung~~ | – | **Erledigt** – Filter „Plan-Ist-Abweichung“ reicht für Verträge mit Abweichungen |
+| ~~2~~ | ~~Portal~~ | – | **Ausgelagert** – eigenes Projekt, siehe übergeordnete Projektliste |
 | ~~3~~ | ~~NetBox Initial-Import~~ | ~~1–2 Tage~~ | **Erledigt** – Kap. 9.4 (Alle CI holen, Vollabgleich, Delta-Sync) |
-| 4 | NetBox Update bei Änderungen | 2–5 Tage | – |
+| ~~4~~ | ~~NetBox Update bei Änderungen~~ | ~~2–5 Tage~~ | **Erledigt** – Cron-Struktur (ir.cron Vollabgleich täglich, Kap. 9.5) |
 
 ---
 
 ## Detailbeschreibungen
 
-### 1. Plan/Ist-Benachrichtigung (Chatter)
+### 1. Plan/Ist – Erledigt
 
-Bei Abweichung zwischen Plan- und Ist-Menge (Vertrag/Leistungsmatrix): Hinweis an Vertrieb als Aktivität im Chatter. Der Filter „Plan-Ist-Abweichung“ in der Vertragsliste bietet bereits Transparenz; dieses Feature würde zusätzlich aktiv informieren.
+Der Filter „Plan-Ist-Abweichung“ in der Vertragsliste ermöglicht die Übersicht über Verträge mit Mengenabweichungen. Zusätzliche Chatter-Benachrichtigungen werden nicht benötigt.
 
 ---
 
-### 2. Portal – CI-Klasse primär, Device Role als Detail
+### 2. Portal – Ausgelagert
 
-**Quelle:** Pflichtenheft Kap. 8.9
-
-- **Primär sichtbar:** CI-Klasse
-- **Device Role** nur als Detailinformation
-
-**Technisch:** intero_net_portal zeigt aktuell keine CIs; Aufwand abhängig davon, ob nur View-Anpassung oder neues Portal-Feature nötig (4 h bis 2 Tage).
+Portal-Entwicklung ist eigenes Projekt mit deutlich erweitertem Umfang. Siehe übergeordnete Projektliste (z.B. `../PROJEKTLISTE.md` oder Workspace-Root).
 
 ---
 
@@ -41,13 +36,9 @@ Bei Abweichung zwischen Plan- und Ist-Menge (Vertrag/Leistungsmatrix): Hinweis a
 
 ---
 
-### 4. NetBox Update bei Änderungen
+### 4. NetBox Update bei Änderungen ✅ (erledigt)
 
-**Quelle:** Pflichtenheft – Erledigte und offene Punkte
-
-Mechanismus (Webhook oder periodischer Abgleich/Cron), der bei NetBox-Änderungen Odoo aktualisiert. Bei Änderung in NetBox → Update des betroffenen CI in Odoo.
-
-**Aufwand:** 2–5 Tage
+**Umsetzung:** Cron-Struktur gemäß Kap. 9.5 – ir.cron für täglichen Vollabgleich (NT:ServiceMan – Vollabgleich NetBox CI). Button „Vollabgleich“ und Cron nutzen dieselbe Sync-Funktion. In Stage nicht testbar; Struktur ist vorhanden.
 
 ---
 
