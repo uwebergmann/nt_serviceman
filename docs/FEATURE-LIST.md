@@ -26,7 +26,7 @@ Der Filter „Plan-Ist-Abweichung“ in der Vertragsliste ermöglicht die Übers
 
 ### 2. Portal – Ausgelagert
 
-Portal-Entwicklung ist eigenes Projekt mit deutlich erweitertem Umfang. Siehe übergeordnete Projektliste (z.B. `../PROJEKTLISTE.md` oder Workspace-Root).
+Portal-Entwicklung ist eigenes Projekt mit deutlich erweitertem Umfang. Siehe `projekte/PROJEKTLISTE.md`.
 
 ---
 

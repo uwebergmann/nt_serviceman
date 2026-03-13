@@ -26,7 +26,7 @@ Stand aus Pflichtenheft, Konzept und FEATURE-LIST (nur nt_serviceman).
 |-------|------------|
 | Tab „Leistungsmatrix“ auf Angebotsformular | Vertrag ist vom Angebot aus bereits erreichbar; Bearbeitung der Matrix am Vertrag ausreichend |
 | Plan/Ist-Chatter-Benachrichtigung | Filter „Plan-Ist-Abweichung“ reicht – Verträge mit Abweichungen gut einsehbar |
-| Portal | Eigenes Projekt mit erweitertem Umfang – siehe `PROJEKTLISTE.md` im Workspace-Root |
+| Portal | Eigenes Projekt mit erweitertem Umfang – siehe `projekte/PROJEKTLISTE.md` |
 
 ---
 
